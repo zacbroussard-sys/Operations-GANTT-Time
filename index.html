@@ -104,8 +104,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="controls">
       <div><label>Status</label><select id="filterStatus"><option value="">All</option></select></div>
       <div><label>Search</label><input id="search" type="text" placeholder="Name or ID…" style="width:130px"></div>
-      <div><label>Near</label><select id="nearWeeks"><option value="4">4 wk</option><option value="8" selected>8 wk</option><option value="12">12 wk</option></select></div>
-      <div><label>Far</label><select id="farMonths"><option value="3">+3 mo</option><option value="6" selected>+6 mo</option><option value="12">+12 mo</option></select></div>
+      <div><label>Near</label><select id="nearWeeks"><option value="4">4 wk</option><option value="6" selected>6 wk</option><option value="8">8 wk</option><option value="12">12 wk</option></select></div>
+      <div><label>Far</label><select id="farMonths"><option value="3">+3 mo</option><option value="6" selected>+6 mo</option><option value="9">+9 mo</option><option value="12">+12 mo</option></select></div>
       <div><label><input type="checkbox" id="hideDeinstalling" checked> Deinstalling</label></div>
       <div><label><input type="checkbox" id="hideFarFuture" checked> Hide NS &gt;180d</label></div>
       <button class="refresh-btn" id="refreshBtn">↻ Refresh</button>
@@ -139,7 +139,7 @@ const CORS_PROXY = 'https://corsproxy.io/?';
 const ON_ROAD_SET = new Set(["On Road","Deinstalling"]);
 const SHOP_BUFFER=6, DEINST_WINDOW=28, FAR_FUTURE_DAYS=180;
 const MIN_LABEL=13, NAME_W=180, PROG_W=148;
-const NEAR_PX=8, FAR_PX=2;
+const NEAR_PX=16, FAR_PX=5;
 let RAW = [];
 
 const STATUS_ORDER=["Interviewing/Scheduling","Scheduled","Not Started","On Road","Deinstalling"];
