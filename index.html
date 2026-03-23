@@ -602,13 +602,6 @@ function render(){
 
   if(data.length===0)html+=`<div class="empty">No campaigns match your filters.</div>`;
   document.getElementById("ganttWrap").innerHTML=html;
-
-  // Sync gantt-header sticky top to match the sticky-header height
-  requestAnimationFrame(()=>{
-    const sh=document.querySelector('.sticky-header');
-    const gh=document.querySelectorAll('.gantt-header');
-    if(sh){const h=sh.offsetHeight+'px';gh.forEach(el=>el.style.top=h);}
-  });
 }
 
 // ── Tooltips ──────────────────────────────────────────────────────────────────
