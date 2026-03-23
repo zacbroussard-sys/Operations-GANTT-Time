@@ -24,8 +24,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .stat .lbl{font-size:10px;margin-top:1px}
 .gantt-wrap{overflow:hidden;border:0.5px solid #d8d8d4;border-radius:8px;background:#fff}
 .gantt-header{display:grid;position:sticky;top:0;background:#f4f4f2;z-index:10;border-bottom:0.5px solid #d8d8d4}
-.month-labels{display:flex;border-bottom:0.5px solid #d8d8d4;position:relative}
-.month-lbl{font-size:10px;color:#666;padding:2px 4px;border-right:0.5px solid #d8d8d4;font-weight:500;flex-shrink:0;overflow:hidden;white-space:nowrap}
+.month-labels{display:flex;border-bottom:0.5px solid #d8d8d4;position:relative;height:22px}
+.month-lbl{font-size:12px;color:#333;padding:3px 6px;border-right:0.5px solid #d8d8d4;font-weight:700;flex-shrink:0;overflow:hidden;white-space:nowrap;display:flex;align-items:center}
+.week-labels{position:relative;height:18px;border-bottom:0.5px solid #d8d8d4;background:#fafaf8}
+.week-lbl{position:absolute;font-size:9px;color:#999;font-weight:500;top:2px;transform:translateX(-50%);white-space:nowrap}
+.week-tick{position:absolute;top:0;bottom:0;width:1px;background:#e4e4e0}
 .group-header{background:#e8e8e4;padding:7px 10px;font-size:13px;font-weight:600;color:#444;display:flex;align-items:center;gap:6px;border-bottom:0.5px solid #d8d8d4;border-top:1.5px solid #d0d0cc;flex-wrap:wrap}
 .group-badge{font-size:11px;padding:2px 7px;border-radius:8px;font-weight:600}
 .alert-badge{font-size:9px;padding:1px 4px;border-radius:3px;background:#FCEBEB;color:#A32D2D;font-weight:500}
@@ -74,9 +77,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .t-val.overdue{color:#A32D2D}
 .t-section{font-size:10px;font-weight:500;color:#999;margin:5px 0 2px;border-top:0.5px solid #ebebea;padding-top:4px;text-transform:uppercase;letter-spacing:.04em}
 .pill{display:inline-block;font-size:10px;padding:1px 6px;border-radius:8px}
-.legend{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:.5rem;align-items:center}
-.leg-item{display:flex;align-items:center;gap:3px;font-size:10px;color:#666}
-.leg-swatch{width:12px;height:9px;border-radius:1px;flex-shrink:0}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:.6rem;align-items:center}
+.leg-item{display:flex;align-items:center;gap:4px;font-size:12px;color:#555}
+.leg-swatch{width:16px;height:11px;border-radius:2px;flex-shrink:0}
 .empty{padding:1.5rem;text-align:center;color:#aaa;font-size:12px}
 .attention-section{border:2px solid #3B82C4;border-radius:8px;margin-bottom:.5rem;overflow:hidden;box-shadow:0 2px 8px rgba(59,130,196,.15)}
 .attention-header{background:#1E4D7B;padding:7px 12px;font-size:12px;font-weight:600;color:#fff;display:flex;align-items:center;gap:6px}
@@ -103,23 +106,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div id="mainChart" style="display:none">
     <div class="controls">
       <div><label>Status</label><select id="filterStatus"><option value="">All</option></select></div>
-      <div><label>Search</label><input id="search" type="text" placeholder="Name or ID…" style="width:130px"></div>
-      <div><label>Near</label><select id="nearWeeks"><option value="4">4 wk</option><option value="6" selected>6 wk</option><option value="8">8 wk</option><option value="12">12 wk</option></select></div>
-      <div><label>Far</label><select id="farMonths"><option value="3">+3 mo</option><option value="6" selected>+6 mo</option><option value="9">+9 mo</option><option value="12">+12 mo</option></select></div>
-      <div><label><input type="checkbox" id="hideDeinstalling" checked> Deinstalling</label></div>
-      <div><label><input type="checkbox" id="hideFarFuture" checked> Hide NS &gt;180d</label></div>
+      <div><label>Search</label><input id="search" type="text" placeholder="Name or ID…" style="width:160px"></div>
       <button class="refresh-btn" id="refreshBtn">↻ Refresh</button>
       <div style="margin-left:4px;font-size:10px;color:#aaa" id="lastUpdated"></div>
     </div>
     <div class="date-range-bar" id="panRange"></div>
-    <div class="filter-note" id="filterNote"></div>
     <div class="summary-bar" id="summaryBar"></div>
     <div class="legend">
       <div class="leg-item"><div class="leg-swatch" style="background:linear-gradient(90deg,#1D9E75 25%,#85B7EB 25% 55%,#AFA9EC 55% 75%,#D3D1C7 75%)"></div>Recruitment bar</div>
       <div class="leg-item"><div class="leg-swatch" style="background:#1D9E75;position:relative;overflow:hidden"><div style="position:absolute;left:4px;top:0;bottom:0;width:1.5px;background:rgba(255,255,255,.65)"></div></div>On road + monthly ticks</div>
-      <div class="leg-item"><div style="width:9px;height:9px;background:#6B63D4;transform:rotate(45deg);border-radius:1px;flex-shrink:0"></div>POI</div>
-      <div class="leg-item"><div style="width:9px;height:9px;background:#0C447C;transform:rotate(45deg);border-radius:1px;flex-shrink:0"></div>CLA</div>
-      <div class="leg-item"><div style="width:9px;height:9px;background:#712B13;transform:rotate(45deg);border-radius:1px;flex-shrink:0"></div>CRA</div>
+      <div class="leg-item"><div style="width:12px;height:12px;background:#6B63D4;transform:rotate(45deg);border-radius:1px;flex-shrink:0"></div>POI</div>
+      <div class="leg-item"><div style="width:12px;height:12px;background:#0C447C;transform:rotate(45deg);border-radius:1px;flex-shrink:0"></div>CLA</div>
+      <div class="leg-item"><div style="width:12px;height:12px;background:#712B13;transform:rotate(45deg);border-radius:1px;flex-shrink:0"></div>CRA</div>
       <div class="leg-item"><div class="leg-swatch" style="background:#B4B2A9;opacity:.6"></div>Ended (stale status)</div>
       <div class="leg-item"><div class="leg-swatch" style="background:repeating-linear-gradient(-45deg,rgba(80,36,2,.65) 0 2px,transparent 2px 6px),#D3D1C7"></div>Shop buffer (6d)</div>
       <div class="leg-item"><div class="leg-swatch" style="border:1.5px dashed #B4B2A9;background:transparent"></div>Awaiting art</div>
@@ -315,8 +313,7 @@ function dateToX(d,viewStart,zoomBoundary){
   return nearDays*NEAR_PX+(daysSince-nearDays)*FAR_PX;
 }
 function getLayout(){
-  const nearWeeks=parseInt(document.getElementById("nearWeeks").value);
-  const farMonths=parseInt(document.getElementById("farMonths").value);
+  const nearWeeks=6, farMonths=6;
   const viewStart=addDays(getToday(),-14);
   const zoomBoundary=addDays(getToday(),nearWeeks*7);
   const viewEnd=addDays(getToday(),nearWeeks*7+farMonths*30);
@@ -458,6 +455,8 @@ function buildRow(c,layout,isAttn=false){
 
 function buildHeader(layout){
   const{viewStart,zoomBoundary,viewEnd,totalW}=layout;
+
+  // ── Month row ──────────────────────────────────────────────────────────────
   const months=[];
   let mc=new Date(viewStart);mc.setDate(1);
   while(mc<viewEnd){
@@ -468,14 +467,40 @@ function buildHeader(layout){
     if(w>0)months.push({label:mc.toLocaleDateString('en-US',{month:'short',year:'2-digit'}),w});
     mc=nx;
   }
+
+  // ── Week row — find all Sundays in view ────────────────────────────────────
+  const weeks=[];
+  // Find first Sunday on or after viewStart
+  let wd=new Date(viewStart);
+  const dow=wd.getDay(); // 0=Sun
+  if(dow!==0) wd.setDate(wd.getDate()+(7-dow));
+  while(wd<viewEnd){
+    const x=dateToX(wd,viewStart,zoomBoundary);
+    if(x>=0&&x<=totalW){
+      const inNear=wd<=zoomBoundary;
+      const label=`${wd.getMonth()+1}/${wd.getDate()}`;
+      weeks.push({x,label,inNear});
+    }
+    wd=new Date(wd);wd.setDate(wd.getDate()+7);
+  }
+
   const zbX=dateToX(zoomBoundary,viewStart,zoomBoundary);
+  const todayX=dateToX(getToday(),viewStart,zoomBoundary);
+
   return`<div class="gantt-header" style="grid-template-columns:${NAME_W}px ${PROG_W}px 1fr">
-    <div style="font-size:11px;font-weight:500;padding:5px 8px;color:#666">Campaign</div>
-    <div style="font-size:11px;font-weight:500;padding:5px 8px;color:#666">Progress</div>
+    <div style="font-size:12px;font-weight:600;padding:6px 8px;color:#444;border-bottom:0.5px solid #d8d8d4;display:flex;align-items:center">Campaign</div>
+    <div style="font-size:12px;font-weight:600;padding:6px 8px;color:#444;border-bottom:0.5px solid #d8d8d4;display:flex;align-items:center">Progress</div>
     <div style="overflow:hidden">
       <div class="month-labels" style="width:${totalW}px">
         ${months.map(m=>`<div class="month-lbl" style="width:${m.w}px">${m.label}</div>`).join('')}
-        <div style="position:absolute;top:0;bottom:0;left:${zbX}px;width:1px;background:rgba(100,100,200,.15)"></div>
+        <div style="position:absolute;top:0;bottom:0;left:${zbX}px;width:1px;background:rgba(100,100,200,.2)"></div>
+      </div>
+      <div class="week-labels" style="width:${totalW}px">
+        ${weeks.map(w=>`
+          <div class="week-tick" style="left:${w.x}px"></div>
+          ${w.inNear?`<span class="week-lbl" style="left:${w.x}px">${w.label}</span>`:''}
+        `).join('')}
+        <div style="position:absolute;top:0;bottom:0;left:${todayX}px;width:1.5px;background:rgba(226,75,74,.4)"></div>
       </div>
     </div>
   </div>`;
@@ -491,22 +516,13 @@ function render(){
 
   const filterStatus=document.getElementById("filterStatus").value;
   const search=document.getElementById("search").value.toLowerCase();
-  const hideD=document.getElementById("hideDeinstalling").checked;
-  const hideFarFuture=document.getElementById("hideFarFuture").checked;
   const layout=getLayout();
 
   document.getElementById("panRange").textContent=`Showing ${fmtDate(layout.viewStart)} → ${fmtDate(layout.viewEnd)}`;
 
   let data=RAW.filter(c=>c.status&&c.status!=="nan"&&c.effectiveStart&&c.effectiveEnd);
-  if(hideD)data=data.filter(c=>c.status!=='Deinstalling');
-  if(hideFarFuture)data=data.filter(c=>!(c.status==='Not Started'&&c.daysToStart>FAR_FUTURE_DAYS));
   if(filterStatus)data=data.filter(c=>c.status===filterStatus);
   if(search)data=data.filter(c=>c.name.toLowerCase().includes(search)||String(c.id).includes(search));
-
-  const hiddenCount=hideFarFuture?RAW.filter(c=>c.status==='Not Started'&&c.daysToStart>FAR_FUTURE_DAYS).length:0;
-  const noteEl=document.getElementById("filterNote");
-  if(hideFarFuture&&hiddenCount>0){noteEl.className='filter-note visible';noteEl.textContent=`⚠ ${hiddenCount} Not Started campaigns hidden (>180d).`;}
-  else{noteEl.className='filter-note';}
 
   const attention=data.filter(c=>needsAttention(c)).sort((a,b)=>a.daysToStart-b.daysToStart);
   const attIds=new Set(attention.map(c=>c.id));
@@ -518,7 +534,7 @@ function render(){
   const endedCount=data.filter(c=>isEndedStatus(c)).length;
 
   document.getElementById("summaryBar").innerHTML=
-    STATUS_ORDER.filter(s=>!(hideD&&s==='Deinstalling')).map(s=>{
+    STATUS_ORDER.map(s=>{
       const cnt=data.filter(c=>c.status===s).length,col=STATUS_COLORS[s];
       return`<div class="stat" style="background:${col.bg}20;border:0.5px solid ${col.bg}"><div class="val" style="color:${col.text}">${cnt}</div><div class="lbl" style="color:${col.text}">${s.replace('Interviewing/Scheduling','Interviewing')}</div></div>`;
     }).join('')+
@@ -526,9 +542,9 @@ function render(){
     `<div class="stat" style="background:#FCEBEB;border:0.5px solid #F7C1C1"><div class="val" style="color:#A32D2D">${overdueCount}</div><div class="lbl" style="color:#A32D2D">overdue</div></div>`+
     (missingCount>0?`<div class="stat" style="background:#FFF3CD;border:0.5px solid #FAC775"><div class="val" style="color:#7A4F00">${missingCount}</div><div class="lbl" style="color:#7A4F00">cars missing</div></div>`:'')+
     (endedCount>0?`<div class="stat" style="background:#F0F0EE;border:0.5px solid #D3D1C7"><div class="val" style="color:#888">${endedCount}</div><div class="lbl" style="color:#888">stale status</div></div>`:'')+
-    (!hideD&&deinstODCount>0?`<div class="stat" style="background:#FCEBEB;border:0.5px solid #A32D2D"><div class="val" style="color:#A32D2D">${deinstODCount}</div><div class="lbl" style="color:#A32D2D">deinst overdue</div></div>`:'')+
-    (!hideD&&deinstPendCount>0?`<div class="stat" style="background:#FFF3CD;border:0.5px solid #FAC775"><div class="val" style="color:#7A4F00">${deinstPendCount}</div><div class="lbl" style="color:#7A4F00">pending removal</div></div>`:'')+
-    (!hideD&&deinstDoneCount>0?`<div class="stat" style="background:#EAF3DE;border:0.5px solid #9FE1CB"><div class="val" style="color:#085041">${deinstDoneCount}</div><div class="lbl" style="color:#085041">✓ cleared</div></div>`:'')+
+    (deinstODCount>0?`<div class="stat" style="background:#FCEBEB;border:0.5px solid #A32D2D"><div class="val" style="color:#A32D2D">${deinstODCount}</div><div class="lbl" style="color:#A32D2D">deinst overdue</div></div>`:'')+
+    (deinstPendCount>0?`<div class="stat" style="background:#FFF3CD;border:0.5px solid #FAC775"><div class="val" style="color:#7A4F00">${deinstPendCount}</div><div class="lbl" style="color:#7A4F00">pending removal</div></div>`:'')+
+    (deinstDoneCount>0?`<div class="stat" style="background:#EAF3DE;border:0.5px solid #9FE1CB"><div class="val" style="color:#085041">${deinstDoneCount}</div><div class="lbl" style="color:#085041">✓ cleared</div></div>`:'')+
     `<div class="stat" style="background:#f4f4f2;border:0.5px solid #d8d8d4"><div class="val">${data.length}</div><div class="lbl" style="color:#666">shown</div></div>`;
 
   const headerHtml=buildHeader(layout);
@@ -549,7 +565,6 @@ function render(){
 
   let html=headerHtml;
   STATUS_ORDER.forEach(status=>{
-    if(hideD&&status==='Deinstalling')return;
     if(filterStatus&&status!==filterStatus)return;
     const rows=grouped[status];if(!rows||rows.length===0)return;
     const col=STATUS_COLORS[status];
@@ -650,7 +665,7 @@ document.getElementById("refreshBtn").addEventListener("click",()=>loadData());
 
 const sel=document.getElementById("filterStatus");
 STATUS_ORDER.forEach(s=>{const o=document.createElement("option");o.value=s;o.textContent=s;sel.appendChild(o);});
-["filterStatus","search","nearWeeks","farMonths","hideDeinstalling","hideFarFuture"].forEach(id=>{
+["filterStatus","search"].forEach(id=>{
   document.getElementById(id).addEventListener(id==="search"?"input":"change",render);
 });
 
