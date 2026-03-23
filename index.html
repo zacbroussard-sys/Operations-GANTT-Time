@@ -15,12 +15,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .controls{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:.5rem;align-items:center}
 .controls select,.controls input[type=text]{font-size:12px;padding:3px 7px;border:0.5px solid #d0d0cc;border-radius:6px;background:#fff;color:#1a1a18;height:28px}
 .controls label{font-size:11px;color:#666;display:flex;align-items:center;gap:3px}
-.pan-bar{display:flex;align-items:center;gap:6px;margin-bottom:.5rem;background:#f0f0ee;border:0.5px solid #d8d8d4;border-radius:8px;padding:5px 10px}
-.pan-btn{background:#fff;border:0.5px solid #d0d0cc;border-radius:6px;font-size:13px;cursor:pointer;padding:3px 10px;color:#1a1a18;line-height:1;height:26px;display:flex;align-items:center;transition:background .1s}
-.pan-btn:hover{background:#e8e8e4}
-.pan-btn.home{font-size:11px;padding:3px 8px}
-.pan-info{font-size:11px;color:#666;flex:1;text-align:center}
-.pan-range{font-size:10px;color:#999;text-align:center}
+.date-range-bar{font-size:11px;color:#999;margin-bottom:.5rem;padding:3px 6px}
 .filter-note{font-size:10px;color:#BA7517;background:#FAEEDA;border:0.5px solid #FAC775;border-radius:6px;padding:2px 7px;display:none;align-items:center;margin-bottom:.4rem}
 .filter-note.visible{display:flex}
 .summary-bar{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:.5rem}
@@ -116,16 +111,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="refresh-btn" id="refreshBtn">↻ Refresh</button>
       <div style="margin-left:4px;font-size:10px;color:#aaa" id="lastUpdated"></div>
     </div>
-    <div class="pan-bar">
-      <button class="pan-btn" id="panFarLeft">⟪</button>
-      <button class="pan-btn" id="panLeft">‹ 2wk</button>
-      <button class="pan-btn" id="panLeft1">‹ 1wk</button>
-      <div><div class="pan-info" id="panInfo"></div><div class="pan-range" id="panRange"></div></div>
-      <button class="pan-btn" id="panRight1">1wk ›</button>
-      <button class="pan-btn" id="panRight">2wk ›</button>
-      <button class="pan-btn" id="panFarRight">⟫</button>
-      <button class="pan-btn home" id="panHome">⌂ Today</button>
-    </div>
+    <div class="date-range-bar" id="panRange"></div>
     <div class="filter-note" id="filterNote"></div>
     <div class="summary-bar" id="summaryBar"></div>
     <div class="legend">
@@ -153,7 +139,6 @@ const ON_ROAD_SET = new Set(["On Road","Deinstalling"]);
 const SHOP_BUFFER=6, DEINST_WINDOW=28, FAR_FUTURE_DAYS=180;
 const MIN_LABEL=13, NAME_W=180, PROG_W=148;
 const NEAR_PX=8, FAR_PX=2;
-let panOffsetDays=0;
 let RAW = [];
 
 const STATUS_ORDER=["Interviewing/Scheduling","Scheduled","Not Started","On Road","Deinstalling"];
@@ -331,10 +316,9 @@ function dateToX(d,viewStart,zoomBoundary){
 function getLayout(){
   const nearWeeks=parseInt(document.getElementById("nearWeeks").value);
   const farMonths=parseInt(document.getElementById("farMonths").value);
-  const anchor=addDays(getToday(),panOffsetDays);
-  const viewStart=addDays(anchor,-14);
-  const zoomBoundary=addDays(anchor,nearWeeks*7);
-  const viewEnd=addDays(anchor,nearWeeks*7+farMonths*30);
+  const viewStart=addDays(getToday(),-14);
+  const zoomBoundary=addDays(getToday(),nearWeeks*7);
+  const viewEnd=addDays(getToday(),nearWeeks*7+farMonths*30);
   const totalW=(14+nearWeeks*7)*NEAR_PX+farMonths*30*FAR_PX;
   return{viewStart,zoomBoundary,viewEnd,totalW};
 }
@@ -510,8 +494,7 @@ function render(){
   const hideFarFuture=document.getElementById("hideFarFuture").checked;
   const layout=getLayout();
 
-  document.getElementById("panInfo").textContent=panOffsetDays===0?`Today — ${fmtDate(TODAY)}`:panOffsetDays>0?`+${panOffsetDays}d from today`:`${Math.abs(panOffsetDays)}d before today`;
-  document.getElementById("panRange").textContent=`${fmtDate(layout.viewStart)} → ${fmtDate(layout.viewEnd)}`;
+  document.getElementById("panRange").textContent=`Showing ${fmtDate(layout.viewStart)} → ${fmtDate(layout.viewEnd)}`;
 
   let data=RAW.filter(c=>c.status&&c.status!=="nan"&&c.effectiveStart&&c.effectiveEnd);
   if(hideD)data=data.filter(c=>c.status!=='Deinstalling');
@@ -653,13 +636,6 @@ function hideTip(){document.getElementById("tooltip").style.display="none";}
 document.addEventListener("mousemove",e=>{if(document.getElementById("tooltip").style.display==="block")moveTip(e);});
 
 // ── Event listeners ───────────────────────────────────────────────────────────
-document.getElementById("panLeft").addEventListener("click",()=>{panOffsetDays-=14;render();});
-document.getElementById("panLeft1").addEventListener("click",()=>{panOffsetDays-=7;render();});
-document.getElementById("panRight1").addEventListener("click",()=>{panOffsetDays+=7;render();});
-document.getElementById("panRight").addEventListener("click",()=>{panOffsetDays+=14;render();});
-document.getElementById("panFarLeft").addEventListener("click",()=>{panOffsetDays-=90;render();});
-document.getElementById("panFarRight").addEventListener("click",()=>{panOffsetDays+=90;render();});
-document.getElementById("panHome").addEventListener("click",()=>{panOffsetDays=0;render();});
 document.getElementById("refreshBtn").addEventListener("click",()=>loadData());
 
 const sel=document.getElementById("filterStatus");
