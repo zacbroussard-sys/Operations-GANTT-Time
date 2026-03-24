@@ -51,7 +51,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .timeline-cell{position:relative;height:38px;overflow:hidden}
 .bar-preroad{position:absolute;height:14px;top:12px;border-radius:2px;overflow:hidden;cursor:pointer;display:flex;transition:opacity .15s}
 .bar-preroad:hover{opacity:.8}
-.bar-seg{height:100%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;overflow:hidden;white-space:nowrap;flex-shrink:0}
+.bar-seg{height:100%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;overflow:hidden;white-space:nowrap;flex-shrink:0;text-shadow:0 1px 2px rgba(0,0,0,.25)}
 .bar-onroad{position:absolute;height:14px;top:12px;border-radius:2px;cursor:pointer;background:#1D9E75;transition:opacity .15s}
 .bar-onroad:hover{opacity:.8}
 .bar-onroad.ended{background:#B4B2A9;opacity:.6}
@@ -78,7 +78,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .days-label{position:absolute;top:12px;height:14px;display:flex;align-items:center;font-size:8px;font-weight:500;white-space:nowrap;pointer-events:none;z-index:5;padding:0 2px}
 .today-line{position:absolute;top:0;bottom:0;width:1.5px;background:#E24B4A;z-index:6;pointer-events:none}
 .start-marker{position:absolute;top:12px;bottom:4px;width:4px;z-index:4;border-radius:0 0 2px 2px;pointer-events:none}
-.tooltip{position:fixed;background:#fff;border:0.5px solid #d0d0cc;border-radius:10px;padding:16px 18px;font-size:12px;z-index:100;pointer-events:none;max-width:480px;min-width:360px;display:none;box-shadow:0 6px 24px rgba(0,0,0,.13);max-height:90vh;overflow-y:auto}
+.tooltip{position:fixed;background:#fff;border:0.5px solid #d0d0cc;border-radius:10px;padding:16px 18px;font-size:12px;z-index:100;max-width:480px;min-width:360px;display:none;box-shadow:0 6px 24px rgba(0,0,0,.13);max-height:90vh;overflow-y:auto;cursor:default}
+.tooltip-pinned{pointer-events:auto!important}
+.t-close{position:absolute;top:8px;right:10px;cursor:pointer;font-size:16px;color:#aaa;line-height:1;padding:2px 5px;border-radius:4px}
+.t-close:hover{background:#f0f0ee;color:#666}
 .t-name{font-weight:700;margin-bottom:6px;color:#1a1a18;font-size:15px;line-height:1.3}
 .t-row{display:flex;justify-content:space-between;gap:16px;margin-bottom:4px;color:#666;font-size:12px}
 .t-val{color:#1a1a18;font-weight:500;text-align:right;font-size:12px}
@@ -126,10 +129,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
       <div class="stats-grid" id="summaryBar"></div>
       <div class="legend">
-        <div class="leg-item"><div class="leg-swatch" style="background:#1D9E75"></div>On road</div>
-        <div class="leg-item"><div class="leg-swatch" style="background:#85B7EB"></div>Scheduled</div>
-        <div class="leg-item"><div class="leg-swatch" style="background:#AFA9EC"></div>Approved</div>
-        <div class="leg-item"><div class="leg-swatch" style="background:#D3D1C7"></div>Unfilled</div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#0D7A5A"></div>On road (recr.)</div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#4A90D9"></div>Scheduled</div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#7B6FCC"></div>Approved</div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#B8B5AC"></div>Unfilled</div>
         <div class="leg-item"><div class="leg-swatch" style="background:#1D9E75;position:relative;overflow:hidden"><div style="position:absolute;left:4px;top:0;bottom:0;width:1.5px;background:rgba(255,255,255,.65)"></div></div>On road + monthly ticks</div>
         <div class="leg-item"><div style="width:10px;height:10px;background:#6B63D4;transform:rotate(45deg);border-radius:1px;flex-shrink:0"></div>POI (diamond)</div>
         <div class="leg-item"><div style="width:11px;height:11px;background:#0C447C;border-radius:50%;flex-shrink:0"></div>CLA (circle)</div>
@@ -347,8 +350,8 @@ function attentionReasons(c){
   const reasons=[];
   if(d<0) reasons.push({tag:'overdue',label:`Start was ${Math.abs(d)}d ago — not yet on road`,color:'#A32D2D'});
   if(!c.artworkApproved&&d<=30) reasons.push({tag:'no art',label:`No artwork approved — starts in ${Math.max(0,d)}d`,color:'#7A4F00'});
-  if(d<=21&&pipe===0) reasons.push({tag:'critical',label:`0 drivers recruited — starts in ${Math.max(0,d)}d`,color:'#7A4F00'});
-  else if(d<=14&&pp<0.5) reasons.push({tag:'behind',label:`Only ${Math.round(pp*100)}% pipeline filled — ${d}d to start`,color:'#A32D2D'});
+  if(d<=21&&pipe===0&&c.onRoad===0) reasons.push({tag:'critical',label:`0 drivers recruited — starts in ${Math.max(0,d)}d`,color:'#7A4F00'});
+  else if(d<=14&&pp<0.5&&c.onRoad===0) reasons.push({tag:'behind',label:`Only ${Math.round(pp*100)}% pipeline filled — ${d}d to start`,color:'#A32D2D'});
   return reasons;
 }
 function needsAttention(c){return attentionReasons(c).length>0;}
@@ -465,8 +468,8 @@ function buildTimeline(c,layout){
     // No-art: show dashed outline over the bar
     const noArtStyle=!hasArt?`outline:1.5px dashed ${urgColor};outline-offset:-1px;`:'';
     html+=`<div class="bar-preroad" style="left:${bsx}px;width:${bw}px;${noArtStyle}" onmouseenter="showTip(event,'${c.id}')" onmouseleave="hideTip()">
-      ${seg(onRW,'#1D9E75','#fff',onRN)}${seg(schW,'#85B7EB','#0C2F52',schN)}${seg(apW,'#AFA9EC','#2A2470',apN)}
-      ${unW>0?`<div class="bar-seg" style="width:${unW}px;background:#D3D1C7;color:#555;flex:1">${unW>=MIN_LABEL&&unN>0?unN:''}</div>`:''}
+      ${seg(onRW,'#0D7A5A','#EAFFF8',onRN)}${seg(schW,'#4A90D9','#fff',schN)}${seg(apW,'#7B6FCC','#fff',apN)}
+      ${unW>0?`<div class="bar-seg" style="width:${unW}px;background:#B8B5AC;color:#fff;flex:1">${unW>=MIN_LABEL&&unN>0?unN:''}</div>`:''}
     </div>`;
     const bufSX=X(addDays(c.effectiveStart,-SHOP_BUFFER)),bufW=Math.max(0,bex-bufSX);
     if(bufW>0&&!ended)html+=`<div class="buf-overlay" style="left:${bufSX}px;width:${bufW}px"></div>`;
@@ -499,7 +502,8 @@ function buildTimeline(c,layout){
 
   const missing=hasMissingCars(c);
   const rsx=X(c.effectiveStart),rex=X(c.effectiveEnd),barW=Math.max(4,rex-rsx);
-  html+=`<div class="bar-onroad ${ended?'ended':''} ${missing&&!ended?'missing-cars':''}" style="left:${rsx}px;width:${barW}px;"
+  const noArtOnRoad=!hasArt&&!ended?'outline:1.5px dashed rgba(255,255,255,.6);outline-offset:-1px;':'';
+  html+=`<div class="bar-onroad ${ended?'ended':''} ${missing&&!ended?'missing-cars':''}" style="left:${rsx}px;width:${barW}px;${noArtOnRoad}"
     onmouseenter="showTip(event,'${c.id}')" onmouseleave="hideTip()"></div>`;
   // Start date label — check if event date is dictating the deadline
   const fed=c.firstEventDate?parseLocalDate(c.firstEventDate):null;
@@ -871,6 +875,7 @@ function showReportTip(e,label,dateStr,dl){
 
 function moveTip(e){
   const t=document.getElementById("tooltip");
+  if(t.dataset.pinned==='1')return; // don't move if pinned
   const tw=t.offsetWidth||300, th=t.offsetHeight||200;
   const vw=window.innerWidth, vh=window.innerHeight;
   let x=e.clientX+14, y=e.clientY-10;
@@ -879,8 +884,42 @@ function moveTip(e){
   if(y<10) y=10;
   t.style.left=x+"px"; t.style.top=y+"px";
 }
-function hideTip(){document.getElementById("tooltip").style.display="none";}
+function hideTip(){
+  const t=document.getElementById("tooltip");
+  if(t.dataset.pinned==='1')return; // don't hide if pinned
+  t.style.display="none";
+}
+function pinTip(){
+  const t=document.getElementById("tooltip");
+  if(t.dataset.pinned==='1'){
+    t.dataset.pinned='0';
+    t.style.display='none';
+  } else {
+    t.dataset.pinned='1';
+    t.style.pointerEvents='auto';
+    // Add close button if not already there
+    if(!t.querySelector('.t-close')){
+      const btn=document.createElement('span');
+      btn.className='t-close';btn.textContent='×';
+      btn.onclick=()=>{t.dataset.pinned='0';t.style.display='none';t.style.pointerEvents='none';};
+      t.insertBefore(btn,t.firstChild);
+    }
+  }
+}
 document.addEventListener("mousemove",e=>{if(document.getElementById("tooltip").style.display==="block")moveTip(e);});
+document.addEventListener("click",e=>{
+  const t=document.getElementById("tooltip");
+  if(t.dataset.pinned==='1'&&!t.contains(e.target)){
+    t.dataset.pinned='0';t.style.display='none';t.style.pointerEvents='none';
+  }
+});
+// Click on a row pins the tooltip
+document.addEventListener("click",e=>{
+  const row=e.target.closest('.row');
+  if(row&&document.getElementById("tooltip").style.display==="block"){
+    pinTip();
+  }
+});
 
 // ── Event listeners ───────────────────────────────────────────────────────────
 document.getElementById("refreshBtn").addEventListener("click",()=>loadData());
