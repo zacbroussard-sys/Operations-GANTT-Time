@@ -59,7 +59,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .bar-deinst-window{position:absolute;height:12px;top:13px;cursor:pointer;transition:opacity .15s;border-radius:0 2px 2px 0}
 .bar-deinst-window:hover{opacity:.85}
 .bar-pending{position:absolute;height:12px;top:13px;border-radius:2px;border:1.5px dashed;cursor:pointer}
-.buf-overlay{position:absolute;height:12px;top:13px;border-radius:1px;pointer-events:none;z-index:3;background:repeating-linear-gradient(-45deg,rgba(80,36,2,.65) 0px,rgba(80,36,2,.65) 2px,transparent 2px,transparent 6px)}
+.buf-overlay{position:absolute;height:12px;top:13px;border-radius:1px;pointer-events:none;z-index:3;background:repeating-linear-gradient(-45deg,rgba(80,36,2,.28) 0px,rgba(80,36,2,.28) 2px,transparent 2px,transparent 6px)}
 .monthly-tick{position:absolute;top:13px;width:1.5px;height:12px;background:rgba(255,255,255,.65);pointer-events:none;z-index:5}
 /* Report markers — shape per type, always fixed color */
 .report-marker{position:absolute;cursor:pointer;z-index:6;transition:transform .12s}
@@ -78,7 +78,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .days-label{position:absolute;top:13px;height:12px;display:flex;align-items:center;font-size:8px;font-weight:500;white-space:nowrap;pointer-events:none;z-index:5;padding:0 2px}
 .today-line{position:absolute;top:0;bottom:0;width:1.5px;background:#E24B4A;z-index:6;pointer-events:none}
 .today-line::before{content:'today';position:absolute;top:0;left:3px;font-size:8px;color:#E24B4A;white-space:nowrap}
-.start-marker{position:absolute;top:9px;bottom:9px;width:2px;z-index:5;border-radius:1px;pointer-events:none}
+.start-marker{position:absolute;top:6px;bottom:6px;width:4px;z-index:5;border-radius:2px;pointer-events:none}
 .tooltip{position:fixed;background:#fff;border:0.5px solid #d0d0cc;border-radius:8px;padding:10px 12px;font-size:11px;z-index:100;pointer-events:none;max-width:300px;display:none;box-shadow:0 4px 16px rgba(0,0,0,.12);max-height:90vh;overflow-y:auto}
 .t-name{font-weight:500;margin-bottom:5px;color:#1a1a18;font-size:12px}
 .t-row{display:flex;justify-content:space-between;gap:10px;margin-bottom:2px;color:#666}
@@ -123,14 +123,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
       <div class="stats-grid" id="summaryBar"></div>
       <div class="legend">
-        <div class="leg-item"><div class="leg-swatch" style="background:linear-gradient(90deg,#1D9E75 25%,#85B7EB 25% 55%,#AFA9EC 55% 75%,#D3D1C7 75%)"></div>Recruitment bar</div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#1D9E75"></div>On road</div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#85B7EB"></div>Scheduled</div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#AFA9EC"></div>Approved</div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#D3D1C7"></div>Unfilled</div>
         <div class="leg-item"><div class="leg-swatch" style="background:#1D9E75;position:relative;overflow:hidden"><div style="position:absolute;left:4px;top:0;bottom:0;width:1.5px;background:rgba(255,255,255,.65)"></div></div>On road + monthly ticks</div>
         <div class="leg-item"><div style="width:10px;height:10px;background:#6B63D4;transform:rotate(45deg);border-radius:1px;flex-shrink:0"></div>POI (diamond)</div>
         <div class="leg-item"><div style="width:11px;height:11px;background:#0C447C;border-radius:50%;flex-shrink:0"></div>CLA (circle)</div>
         <div class="leg-item"><div style="width:10px;height:10px;background:#712B13;border-radius:2px;flex-shrink:0"></div>CRA (square)</div>
         <div class="leg-item"><div class="leg-swatch" style="background:#1D9E75;outline:2px solid #E24B4A;outline-offset:-1px"></div>Cars missing</div>
         <div class="leg-item"><div class="leg-swatch" style="background:#B4B2A9;opacity:.6"></div>Ended (stale status)</div>
-        <div class="leg-item"><div class="leg-swatch" style="background:repeating-linear-gradient(-45deg,rgba(80,36,2,.65) 0 2px,transparent 2px 6px),#D3D1C7"></div>Shop buffer (6d)</div>
+        <div class="leg-item"><div class="leg-swatch" style="background:repeating-linear-gradient(-45deg,rgba(80,36,2,.28) 0 2px,transparent 2px 6px),#D3D1C7"></div>Shop buffer (6d)</div>
         <div class="leg-item"><div class="leg-swatch" style="border:1.5px dashed #B4B2A9;background:transparent"></div>Awaiting art</div>
       </div>
     </div>
@@ -457,7 +460,7 @@ function buildRow(c,layout,isAttn=false){
     dp&&!deinstOD?`<span class="warn-badge" style="margin-left:3px">remove ${c.onRoad}</span>`:'',
     deinstDone?`<span style="margin-left:3px;font-size:9px;color:#085041;font-weight:500">✓ cleared</span>`:'',
   ].join('');
-  return`<div class="row ${rowClass}" style="grid-template-columns:${NAME_W}px ${PROG_W}px 1fr">
+  return`<div class="row ${rowClass}" style="grid-template-columns:${NAME_W}px ${PROG_W}px 1fr" onmouseenter="showTip(event,'${c.id}')" onmouseleave="hideTip()">
     <div class="row-left"><div class="row-name ${nameClass}" title="${c.name}">${c.name}${badges}</div></div>
     <div style="padding:2px 6px;display:flex;flex-direction:column;gap:2px;justify-content:center">${buildProgressBars(c)}</div>
     <div class="timeline-cell">${buildTimeline(c,layout)}</div>
