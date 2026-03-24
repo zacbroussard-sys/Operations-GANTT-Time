@@ -325,11 +325,9 @@ function attentionReasons(c){
   const pp=c.carQty>0?pipe/c.carQty:0;
   const reasons=[];
   if(d<0) reasons.push({tag:'overdue',label:`Start was ${Math.abs(d)}d ago — not yet on road`,color:'#A32D2D'});
-  if(!c.artworkApproved) reasons.push({tag:'no art',label:'Artwork not yet approved',color:'#7A4F00'});
-  if(d<=7&&pipe===0) reasons.push({tag:'critical',label:`0 cars scheduled — starts in ${Math.max(0,d)}d`,color:'#A32D2D'});
-  else if(d<=14&&pp<0.5) reasons.push({tag:'behind',label:`Only ${Math.round(pp*100)}% pipeline filled — ${d}d to start`,color:'#E24B4A'});
-  const fed=c.firstEventDate?parseLocalDate(c.firstEventDate):null;
-  if(fed&&daysUntil(fed)<=7&&daysUntil(fed)>=0) reasons.push({tag:'event',label:`Event in ${daysUntil(fed)}d — ${fmtDate(fed)}`,color:'#E24B4A'});
+  if(!c.artworkApproved&&d<=30) reasons.push({tag:'no art',label:`No artwork approved — starts in ${Math.max(0,d)}d`,color:'#7A4F00'});
+  if(d<=21&&pipe===0) reasons.push({tag:'critical',label:`0 drivers recruited — starts in ${Math.max(0,d)}d`,color:'#A32D2D'});
+  else if(d<=14&&pp<0.5) reasons.push({tag:'behind',label:`Only ${Math.round(pp*100)}% pipeline filled — ${d}d to start`,color:'#A32D2D'});
   return reasons;
 }
 function needsAttention(c){return attentionReasons(c).length>0;}
@@ -543,8 +541,11 @@ function buildRow(c,layout,isAttn=false){
   const od=isOverdue(c),missing=hasMissingCars(c)&&c.status!=='Deinstalling';
   const deinstOD=isDeinstOverdue(c),deinstDone=isDeinstComplete(c),dp=c.status==='Deinstalling'&&c.onRoad>0;
   const ended=isEndedStatus(c);
-  const rowClass=ended?'ended-row':deinstOD?'deinst-overdue-row':od?'overdue-row':isAttn?'attention-row':'';
-  const nameClass=ended?'ended':od?'overdue':isAttn?'attention':'';
+  const reasons=attentionReasons(c);
+  const hasCritical=reasons.some(r=>r.color==='#A32D2D');
+  const hasWarning=reasons.length>0&&!hasCritical;
+  const rowClass=ended?'ended-row':deinstOD?'deinst-overdue-row':(od||hasCritical)?'overdue-row':hasWarning?'attention-row':'';
+  const nameClass=ended?'ended':(od||hasCritical)?'overdue':hasWarning?'attention':'';
   const reasons=attentionReasons(c);
   const badges=[
     od&&!ended?`<span class="alert-badge" style="margin-left:3px">!</span>`:'',
@@ -643,12 +644,16 @@ function render(){
   const chip=(val,lbl,bg,border,color)=>
     `<div class="stat-chip" style="background:${bg};border-color:${border};color:${color}"><span class="val">${val}</span><span class="lbl">${lbl}</span></div>`;
 
+  const criticalCount=data.filter(c=>attentionReasons(c).some(r=>r.color==='#A32D2D')).length;
+  const warningCount=attention.length-criticalCount;
+
   document.getElementById("summaryBar").innerHTML=
     STATUS_ORDER.map(s=>{
       const cnt=data.filter(c=>c.status===s).length,col=STATUS_COLORS[s];
       return chip(cnt,s.replace('Interviewing/Scheduling','Int/Sched'),col.bg+'33',col.bg,col.text);
     }).join('')+
-    chip(attention.length,'need attn','#FAEEDA','#FAC775','#633806')+
+    (criticalCount>0?chip(criticalCount,'critical','#FCEBEB','#A32D2D','#A32D2D'):'')+
+    (warningCount>0?chip(warningCount,'warnings','#FAEEDA','#FAC775','#633806'):'')+
     chip(overdueCount,'overdue','#FCEBEB','#F7C1C1','#A32D2D')+
     (missingCount>0?chip(missingCount,'cars missing','#FFF3CD','#FAC775','#7A4F00'):'')+
     (endedCount>0?chip(endedCount,'stale','#F0F0EE','#D3D1C7','#888'):'')+
@@ -669,7 +674,9 @@ function render(){
   // Attention rows go INSIDE ganttWrap at the top — same container = same 1fr width = aligned today lines
   let html='';
   if(attention.length>0){
-    html+=`<div class="attention-header" style="border-radius:0">⚠ Needs Attention — ${attention.length} campaign${attention.length>1?'s':''} require action now</div>`;
+    const critInAttn=attention.filter(c=>attentionReasons(c).some(r=>r.color==='#A32D2D')).length;
+    const warnInAttn=attention.length-critInAttn;
+    html+=`<div class="attention-header" style="border-radius:0">⚠ Needs Attention — ${critInAttn>0?`<span style="background:rgba(255,255,255,.2);border-radius:4px;padding:1px 6px;margin:0 2px">${critInAttn} critical</span>`:''}${warnInAttn>0?`<span style="background:rgba(255,200,0,.25);border-radius:4px;padding:1px 6px;margin:0 2px;color:#FFE082">${warnInAttn} warning</span>`:''}</div>`;
     html+=headerHtml;
     attention.forEach(c=>{html+=buildRow(c,layout,true);});
     html+=`<div style="height:4px;background:linear-gradient(180deg,rgba(59,130,196,.15),transparent)"></div>`;
