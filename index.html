@@ -35,8 +35,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .row{display:grid;border-bottom:0.5px solid #ebebea;align-items:center;min-height:38px;background:#fff}
 .row:hover{background:#f8f8f7}
 .row.overdue-row{background:#FDECEA;border-left:3px solid #E24B4A}
-.row.attention-row{background:#FEF3C7;border-left:3px solid #F59E0B}
-.row.deinst-overdue-row{background:#FDECEA;border-left:3px solid #A32D2D}
+.row.attention-row{background:#FEF3C7;border-left:3px solid #F59E0B}.row.deinst-overdue-row{background:#FDECEA;border-left:3px solid #A32D2D}
 .row.ended-row{background:#F8F8F7}
 .row-left{padding:2px 8px;display:flex;flex-direction:column;gap:2px;justify-content:center;min-height:38px}
 .row-name{font-size:11px;color:#1a1a18;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
@@ -93,7 +92,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .leg-item{display:flex;align-items:center;gap:4px;font-size:12px;color:#555}
 .leg-swatch{width:16px;height:11px;border-radius:2px;flex-shrink:0}
 .empty{padding:1.5rem;text-align:center;color:#aaa;font-size:12px}
-.attention-section{border:0.5px solid #3B82C4;border-radius:8px;margin-bottom:.5rem;overflow:hidden;box-shadow:0 2px 8px rgba(59,130,196,.1)}
 .attention-header{background:#1E4D7B;padding:7px 12px;font-size:12px;font-weight:600;color:#fff;display:flex;align-items:center;gap:6px}
 .refresh-btn{margin-left:auto;font-size:10px;background:#fff;border:0.5px solid #d0d0cc;border-radius:4px;padding:2px 8px;cursor:pointer;color:#666}
 .refresh-btn:hover{background:#f0f0ee}
@@ -141,7 +139,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="leg-item"><div class="leg-swatch" style="border:1.5px dashed #B4B2A9;background:transparent"></div>Awaiting art</div>
       </div>
     </div>
-    <div id="attentionSection"></div>
     <div class="gantt-wrap" id="ganttWrap"></div>
     <div class="tooltip" id="tooltip"></div>
   </div>
@@ -637,15 +634,15 @@ function render(){
     return rank(a)-rank(b);
   }));
 
-  let attHtml='';
+  // Attention rows go INSIDE ganttWrap at the top — same container = same 1fr width = aligned today lines
+  let html='';
   if(attention.length>0){
-    attHtml=`<div class="attention-section"><div class="attention-header">⚠ Needs Attention — ${attention.length} campaign${attention.length>1?'s':''} require action now</div>${headerHtml}`;
-    attention.forEach(c=>{attHtml+=buildRow(c,layout,true);});
-    attHtml+='</div>';
+    html+=`<div class="attention-header" style="border-radius:0">⚠ Needs Attention — ${attention.length} campaign${attention.length>1?'s':''} require action now</div>`;
+    html+=headerHtml;
+    attention.forEach(c=>{html+=buildRow(c,layout,true);});
+    html+=`<div style="height:4px;background:linear-gradient(180deg,rgba(59,130,196,.15),transparent)"></div>`;
   }
-  document.getElementById("attentionSection").innerHTML=attHtml;
-
-  let html=headerHtml;
+  html+=headerHtml;
   STATUS_ORDER.forEach(status=>{
     if(filterStatus&&status!==filterStatus)return;
     const rows=grouped[status];if(!rows||rows.length===0)return;
