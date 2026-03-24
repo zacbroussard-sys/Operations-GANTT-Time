@@ -297,8 +297,15 @@ function reportingDates(c){
 // parseLocalDate("2026-03-24") = local midnight = Mar 24 12am ET — correct!
 function parseLocalDate(ds){
   if(!ds)return null;
-  const[y,m,d]=ds.split('-').map(Number);
-  return new Date(y,m-1,d);
+  if(ds instanceof Date)return ds;
+  if(typeof ds==='string'){
+    const parts=ds.split('-');
+    if(parts.length===3)return new Date(Number(parts[0]),Number(parts[1])-1,Number(parts[2]));
+    // fallback for M/D/YYYY format from CSV
+    const parts2=ds.split('/');
+    if(parts2.length===3)return new Date(Number(parts2[2]),Number(parts2[0])-1,Number(parts2[1]));
+  }
+  return new Date(ds);
 }
 function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r;}
 function fmtDate(d){return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});}
