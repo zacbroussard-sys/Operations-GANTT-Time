@@ -34,8 +34,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .warn-badge{font-size:9px;padding:1px 4px;border-radius:3px;background:#FFF3CD;color:#7A4F00;font-weight:500}
 .row{display:grid;border-bottom:0.5px solid #ebebea;align-items:center;min-height:38px;background:#fff}
 .row:hover{background:#f8f8f7}
-.row.overdue-row{background:#FDECEA;border-left:3px solid #E24B4A}
-.row.attention-row{background:#FEF3C7;border-left:3px solid #F59E0B}.row.deinst-overdue-row{background:#FDECEA;border-left:3px solid #A32D2D}
+.row.overdue-row{background:#FDECEA;box-shadow:inset 3px 0 0 #E24B4A}
+.row.attention-row{background:#FEF3C7;box-shadow:inset 3px 0 0 #F59E0B}
+.row.deinst-overdue-row{background:#FDECEA;box-shadow:inset 3px 0 0 #A32D2D}
 .row.ended-row{background:#F8F8F7}
 .row-left{padding:2px 8px;display:flex;flex-direction:column;gap:2px;justify-content:center;min-height:38px}
 .row-name{font-size:11px;color:#1a1a18;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
@@ -231,6 +232,7 @@ async function loadData() {
           effectiveStart: toISO(effectiveStart),
           effectiveEnd: toISO(effectiveEnd),
           barStart: toISO(parseDate(r.barStart)),
+          artworkApproved: r.artworkApproved||r.artwork_approved||r['artworkApproved']||'',
           firstEventDate: toISO(parseDate(r.firstEventDate)),
           carQty: parseInt(r.carQty) || 0,
           onRoad: parseInt(r.onRoad) || 0,
@@ -316,12 +318,21 @@ function liveDaysToStart(c){
 function isEndedStatus(c){return c.status==='On Road'&&c.effectiveEnd&&parseLocalDate(c.effectiveEnd)<getToday();}
 function hasMissingCars(c){return ON_ROAD_SET.has(c.status)&&c.carQty>0&&c.onRoad<c.carQty&&!isEndedStatus(c);}
 function isOverdue(c){const d=liveDaysToStart(c);return d!==null&&d<0&&!ON_ROAD_SET.has(c.status);}
-function needsAttention(c){
-  if(ON_ROAD_SET.has(c.status))return false;
-  const d=liveDaysToStart(c);if(d===null)return false;
-  const pipe=c.scheduled+c.installedNoPOI,pp=c.carQty>0?pipe/c.carQty:0;
-  return(d<=14&&pp<0.5)||(d<=7&&pp===0);
+function attentionReasons(c){
+  if(ON_ROAD_SET.has(c.status))return[];
+  const d=liveDaysToStart(c);if(d===null)return[];
+  const pipe=c.scheduled+c.installedNoPOI;
+  const pp=c.carQty>0?pipe/c.carQty:0;
+  const reasons=[];
+  if(d<0) reasons.push({tag:'overdue',label:`Start was ${Math.abs(d)}d ago — not yet on road`,color:'#A32D2D'});
+  if(!c.artworkApproved&&!c.barStart) reasons.push({tag:'no-art',label:'No artwork approval date',color:'#7A4F00'});
+  if(d<=7&&pipe===0) reasons.push({tag:'critical',label:`0 cars scheduled — starts in ${Math.max(0,d)}d`,color:'#A32D2D'});
+  else if(d<=14&&pp<0.5) reasons.push({tag:'behind',label:`Only ${Math.round(pp*100)}% pipeline filled — ${d}d to start`,color:'#E24B4A'});
+  const fed=c.firstEventDate?parseLocalDate(c.firstEventDate):null;
+  if(fed&&daysUntil(fed)<=7&&daysUntil(fed)>=0) reasons.push({tag:'event',label:`Event in ${daysUntil(fed)}d — ${fmtDate(fed)}`,color:'#E24B4A'});
+  return reasons;
 }
+function needsAttention(c){return attentionReasons(c).length>0;}
 function urgencyColor(c){
   const d=liveDaysToStart(c);
   const status=c.status;
@@ -502,8 +513,15 @@ function buildTimeline(c,layout){
       }
     }
   } else {
+    // Ended — show end date + how long ago
     const endedDaysAgo=Math.round((getToday()-parseLocalDate(c.effectiveEnd))/86400000);
-    if(rex>=0&&rex<=totalW)html+=`<div class="start-label" style="left:${rex}px;color:#A32D2D;font-size:8px">${endedDaysAgo}d ago</div>`;
+    if(rex>=0&&rex<=totalW)html+=`<div class="start-label" style="left:${rex}px;color:#A32D2D;font-size:8px">${fmtShortDate(c.effectiveEnd)} (${endedDaysAgo}d ago)</div>`;
+  }
+  // End date label for active on-road campaigns
+  if(!ended&&rex>=0&&rex<=totalW){
+    const dl=daysLeft!==null?daysLeft:Math.round((parseLocalDate(c.effectiveEnd)-getToday())/86400000);
+    const endColor=dl<=14?'#E24B4A':dl<=30?'#EF9F27':'rgba(255,255,255,.7)';
+    html+=`<div style="position:absolute;top:1px;left:${rex}px;transform:translateX(-50%);font-size:8px;font-weight:500;color:${endColor};white-space:nowrap;pointer-events:none;z-index:5">${fmtShortDate(c.effectiveEnd)}</div>`;
   }
   return html;
 }
@@ -515,6 +533,7 @@ function buildRow(c,layout,isAttn=false){
   const ended=isEndedStatus(c);
   const rowClass=ended?'ended-row':deinstOD?'deinst-overdue-row':od?'overdue-row':isAttn?'attention-row':'';
   const nameClass=ended?'ended':od?'overdue':isAttn?'attention':'';
+  const reasons=attentionReasons(c);
   const badges=[
     od&&!ended?`<span class="alert-badge" style="margin-left:3px">!</span>`:'',
     missing?`<span class="alert-badge" style="margin-left:3px">cars missing</span>`:'',
@@ -522,6 +541,7 @@ function buildRow(c,layout,isAttn=false){
     deinstOD?`<span class="alert-badge" style="margin-left:3px">deinst overdue</span>`:'',
     dp&&!deinstOD?`<span class="warn-badge" style="margin-left:3px">remove ${c.onRoad}</span>`:'',
     deinstDone?`<span style="margin-left:3px;font-size:9px;color:#085041;font-weight:500">✓ cleared</span>`:'',
+    ...reasons.map(r=>`<span style="margin-left:3px;font-size:9px;padding:1px 4px;border-radius:3px;background:${r.color}22;color:${r.color};font-weight:600;border:0.5px solid ${r.color}55">${r.tag}</span>`),
   ].join('');
   return`<div class="row ${rowClass}" style="grid-template-columns:${NAME_W}px ${PROG_W}px 1fr" onmouseenter="showTip(event,'${c.id}')" onmouseleave="hideTip()">
     <div class="row-left"><div class="row-name ${nameClass}" title="${c.name}">${c.name}${badges}</div></div>
@@ -720,6 +740,9 @@ function showTip(e,id){
     const ddlColor=ddl!=null?(ddl<0?'#A32D2D':ddl<=7?'#E24B4A':'#1a1a18'):'#1a1a18';
     const ddlSuffix=ddl!=null?(ddl<0?`${Math.abs(ddl)}d OD`:`${ddl}d left`):'';
 
+    // Attention reasons
+    const reasons=attentionReasons(c);
+
     // Next monthly drop
     const nextMonthly=rd.monthlies.find(d=>d>=TODAY)||null;
 
@@ -727,14 +750,17 @@ function showTip(e,id){
     tip.style.display="block";
     tip.innerHTML=`
       <div class="t-name">${c.name}</div>
-      <div style="display:flex;align-items:center;gap:5px;margin-bottom:10px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:${reasons.length>0?'6px':'10px'};flex-wrap:wrap">
         <span class="pill" style="background:${col.bg};color:${col.text}">${c.status}</span>
         <span class="pill" style="background:#f0f0ee;color:#555">${rd.months}mo</span>
         <span class="pill" style="background:#f0f0ee;color:#555">${c.market}</span>
         ${ended?`<span class="pill" style="background:#FFF3CD;color:#7A4F00">⚠ stale status</span>`:''}
         ${fed&&fedDays!=null&&fedDays>=0&&fedDays<=14?`<span class="pill" style="background:#FCEBEB;color:#A32D2D">⚡ event in ${fedDays}d</span>`:''}
       </div>
-
+      ${reasons.length>0?`<div style="background:#FFF8F0;border:0.5px solid #F59E0B;border-radius:6px;padding:7px 10px;margin-bottom:10px">
+        <div style="font-size:10px;font-weight:700;color:#92400E;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">⚠ Needs Attention</div>
+        ${reasons.map(r=>`<div style="font-size:11px;color:${r.color};margin-bottom:2px;display:flex;align-items:center;gap:5px"><span style="width:6px;height:6px;border-radius:50%;background:${r.color};flex-shrink:0;display:inline-block"></span>${r.label}</div>`).join('')}
+      </div>`:''}
       ${ended?`<div style="background:#FFF3CD;color:#7A4F00;font-size:11px;padding:6px 8px;border-radius:6px;margin-bottom:10px;font-weight:500">⚠ Campaign ended ${Math.round((TODAY-parseLocalDate(c.effectiveEnd))/86400000)}d ago — status not yet updated in source</div>`:''}
 
       <div class="t-section">Timeline</div>
