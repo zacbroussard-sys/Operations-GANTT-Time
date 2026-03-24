@@ -270,13 +270,13 @@ function getToday() {
 // ── Reporting dates ───────────────────────────────────────────────────────────
 function addMonths(d,n){const r=new Date(d);r.setMonth(r.getMonth()+n);return r;}
 function campaignMonths(es,ee){
-  let s=new Date(es),e=new Date(ee);
+  let s=parseLocalDate(es)||new Date(es),e=parseLocalDate(ee)||new Date(ee);
   if(e<=s)e=addMonths(s,1);
   return Math.min(12,Math.max(1,Math.ceil((e-s)/86400000/30.44)));
 }
 function reportingDates(c){
-  const s=new Date(c.effectiveStart);
-  let e=new Date(c.effectiveEnd);
+  const s=parseLocalDate(c.effectiveStart);
+  let e=parseLocalDate(c.effectiveEnd);
   if(e<=s)e=addMonths(s,1);
   const months=campaignMonths(c.effectiveStart,c.effectiveEnd);
   const poi=new Date(s);poi.setDate(poi.getDate()+7);
@@ -292,13 +292,24 @@ function reportingDates(c){
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+// Parse ISO date strings (YYYY-MM-DD) as LOCAL midnight, not UTC midnight
+// new Date("2026-03-24") = UTC midnight = Mar 23 8pm ET — wrong!
+// parseLocalDate("2026-03-24") = local midnight = Mar 24 12am ET — correct!
+function parseLocalDate(ds){
+  if(!ds)return null;
+  const[y,m,d]=ds.split('-').map(Number);
+  return new Date(y,m-1,d);
+}
 function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r;}
 function fmtDate(d){return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});}
-function fmtShortDate(ds){const d=new Date(ds);return(d.getMonth()+1)+'/'+(d.getDate());}
+function fmtShortDate(ds){const d=parseLocalDate(ds);return d?(d.getMonth()+1)+'/'+(d.getDate()):'';}
 function daysUntil(d){return Math.round((d-getToday())/86400000);}
 function pct(n,d){return d>0?Math.min(100,Math.max(0,n/d*100)):0;}
-function liveDaysToStart(c){return c.effectiveStart?Math.round((new Date(c.effectiveStart)-getToday())/86400000):null;}
-function isEndedStatus(c){return c.status==='On Road'&&c.effectiveEnd&&new Date(c.effectiveEnd)<getToday();}
+function liveDaysToStart(c){
+  const d=parseLocalDate(c.effectiveStart);
+  return d?Math.round((d-getToday())/86400000):null;
+}
+function isEndedStatus(c){return c.status==='On Road'&&c.effectiveEnd&&parseLocalDate(c.effectiveEnd)<getToday();}
 function hasMissingCars(c){return ON_ROAD_SET.has(c.status)&&c.carQty>0&&c.onRoad<c.carQty&&!isEndedStatus(c);}
 function isOverdue(c){const d=liveDaysToStart(c);return d!==null&&d<0&&!ON_ROAD_SET.has(c.status);}
 function needsAttention(c){
@@ -319,7 +330,7 @@ function urgencyColor(c){
   if(d<=90)return"#FAC775";
   return"#9FE1CB";
 }
-function deinstDeadline(c){return addDays(c.effectiveEnd,DEINST_WINDOW);}
+function deinstDeadline(c){return addDays(parseLocalDate(c.effectiveEnd),DEINST_WINDOW);}
 function deinstDaysLeft(c){return Math.round((deinstDeadline(c)-getToday())/86400000);}
 function isDeinstOverdue(c){return c.status==='Deinstalling'&&c.onRoad>0&&deinstDaysLeft(c)<0;}
 function isDeinstComplete(c){return c.status==='Deinstalling'&&c.onRoad===0;}
@@ -331,7 +342,7 @@ function deinstWindowColor(c){
 
 // ── Layout ────────────────────────────────────────────────────────────────────
 function dateToX(d,viewStart,zoomBoundary){
-  const date=typeof d==='string'?new Date(d):d;
+  const date=typeof d==='string'?parseLocalDate(d):d;
   const daysSince=(date-viewStart)/86400000;
   const nearDays=(zoomBoundary-viewStart)/86400000;
   if(daysSince<=0)return daysSince*NEAR_PX;
@@ -414,8 +425,8 @@ function buildTimeline(c,layout){
     const bufSX=X(addDays(c.effectiveStart,-SHOP_BUFFER)),bufW=Math.max(0,bex-bufSX);
     if(bufW>0&&!ended)html+=`<div class="buf-overlay" style="left:${bufSX}px;width:${bufW}px"></div>`;
     // Start label — flag with ⚡ if event date is dictating the deadline
-    const fedPre=c.firstEventDate?new Date(c.firstEventDate):null;
-    const fedBeforePre=fedPre&&fedPre<new Date(c.effectiveStart);
+    const fedPre=c.firstEventDate?parseLocalDate(c.firstEventDate):null;
+    const fedBeforePre=fedPre&&fedPre<parseLocalDate(c.effectiveStart);
     if(bex>=0&&bex<=totalW){
       if(fedBeforePre){
         const fedPreDays=daysUntil(fedPre);
@@ -445,8 +456,8 @@ function buildTimeline(c,layout){
   html+=`<div class="bar-onroad ${ended?'ended':''} ${missing&&!ended?'missing-cars':''}" style="left:${rsx}px;width:${barW}px;"
     onmouseenter="showTip(event,'${c.id}')" onmouseleave="hideTip()"></div>`;
   // Start date label — check if event date is dictating the deadline
-  const fed=c.firstEventDate?new Date(c.firstEventDate):null;
-  const fedBeforeStart=fed&&new Date(c.effectiveStart)&&fed<new Date(c.effectiveStart);
+  const fed=c.firstEventDate?parseLocalDate(c.firstEventDate):null;
+  const fedBeforeStart=fed&&parseLocalDate(c.effectiveStart)&&fed<parseLocalDate(c.effectiveStart);
   if(!ended){
     if(fedBeforeStart){
       // Event is the real deadline — show event date in amber with ⚡ flag
@@ -477,7 +488,7 @@ function buildTimeline(c,layout){
     });
     // First event date marker — vertical line with date label above
     if(c.firstEventDate){
-      const fed=new Date(c.firstEventDate);
+      const fed=parseLocalDate(c.firstEventDate);
       const fedX=X(fed);
       const fedDays=daysUntil(fed);
       const fedColor=fedDays<0?'#A32D2D':fedDays<=7?'#E24B4A':fedDays<=14?'#EF9F27':'#F59E0B';
@@ -487,7 +498,7 @@ function buildTimeline(c,layout){
       }
     }
   } else {
-    const endedDaysAgo=Math.round((getToday()-new Date(c.effectiveEnd))/86400000);
+    const endedDaysAgo=Math.round((getToday()-parseLocalDate(c.effectiveEnd))/86400000);
     if(rex>=0&&rex<=totalW)html+=`<div class="start-label" style="left:${rex}px;color:#A32D2D;font-size:8px">${endedDaysAgo}d ago</div>`;
   }
   return html;
@@ -674,17 +685,17 @@ function showTip(e,id){
     const rd=reportingDates(c);
 
     // Timeline calcs
-    const daysOnRoad=ON_ROAD_SET.has(c.status)&&c.effectiveStart?Math.round((TODAY-new Date(c.effectiveStart))/86400000):null;
-    const totalDays=c.effectiveStart&&c.effectiveEnd?Math.round((new Date(c.effectiveEnd)-new Date(c.effectiveStart))/86400000):null;
+    const daysOnRoad=ON_ROAD_SET.has(c.status)&&c.effectiveStart?Math.round((TODAY-parseLocalDate(c.effectiveStart))/86400000):null;
+    const totalDays=c.effectiveStart&&c.effectiveEnd?Math.round((parseLocalDate(c.effectiveEnd)-parseLocalDate(c.effectiveStart))/86400000):null;
     const pctElapsed=daysOnRoad!=null&&totalDays?Math.min(100,Math.round(daysOnRoad/totalDays*100)):null;
-    const daysLeft=c.effectiveEnd?Math.round((new Date(c.effectiveEnd)-TODAY)/86400000):null;
+    const daysLeft=c.effectiveEnd?Math.round((parseLocalDate(c.effectiveEnd)-TODAY)/86400000):null;
     const liveD=liveDaysToStart(c);
     const dLabel=liveD===null?'':liveD<0?(ON_ROAD_SET.has(c.status)?`Started ${Math.abs(liveD)}d ago`:`${Math.abs(liveD)}d overdue`):`Starts in ${liveD}d`;
 
     // First event date
-    const fed=c.firstEventDate?new Date(c.firstEventDate):null;
+    const fed=c.firstEventDate?parseLocalDate(c.firstEventDate):null;
     const fedDays=fed?Math.round((fed-TODAY)/86400000):null;
-    const fedBeforeStart=fed&&c.effectiveStart&&fed<new Date(c.effectiveStart);
+    const fedBeforeStart=fed&&c.effectiveStart&&fed<parseLocalDate(c.effectiveStart);
     const fedColor=fedDays!=null?(fedDays<0?'#A32D2D':fedDays<=7?'#E24B4A':fedDays<=14?'#EF9F27':'#1a1a18'):'#1a1a18';
     const fedSuffix=fedDays!=null?(fedDays<0?` — ${Math.abs(fedDays)}d ago`:fedDays===0?' — today!':` — in ${fedDays}d`):'';
 
@@ -720,12 +731,12 @@ function showTip(e,id){
         ${fed&&fedDays!=null&&fedDays>=0&&fedDays<=14?`<span class="pill" style="background:#FCEBEB;color:#A32D2D">⚡ event in ${fedDays}d</span>`:''}
       </div>
 
-      ${ended?`<div style="background:#FFF3CD;color:#7A4F00;font-size:11px;padding:6px 8px;border-radius:6px;margin-bottom:10px;font-weight:500">⚠ Campaign ended ${Math.round((TODAY-new Date(c.effectiveEnd))/86400000)}d ago — status not yet updated in source</div>`:''}
+      ${ended?`<div style="background:#FFF3CD;color:#7A4F00;font-size:11px;padding:6px 8px;border-radius:6px;margin-bottom:10px;font-weight:500">⚠ Campaign ended ${Math.round((TODAY-parseLocalDate(c.effectiveEnd))/86400000)}d ago — status not yet updated in source</div>`:''}
 
       <div class="t-section">Timeline</div>
       <div class="t-grid">
-        <div class="t-row"><span>Start</span><span class="t-val">${fmtDate(new Date(c.effectiveStart))}</span></div>
-        <div class="t-row"><span>End</span><span class="t-val">${fmtDate(new Date(c.effectiveEnd))}</span></div>
+        <div class="t-row"><span>Start</span><span class="t-val">${fmtDate(parseLocalDate(c.effectiveStart))}</span></div>
+        <div class="t-row"><span>End</span><span class="t-val">${fmtDate(parseLocalDate(c.effectiveEnd))}</span></div>
         ${!ON_ROAD_SET.has(c.status)?`<div class="t-row"><span>Recruitment</span><span class="t-val" style="color:${od?'#A32D2D':liveD<=14?'#E24B4A':'inherit'}">${dLabel}</span></div>`:''}
         ${daysOnRoad!=null?`<div class="t-row"><span>On road</span><span class="t-val">${daysOnRoad}d (${pctElapsed}% elapsed)</span></div>`:''}
         ${daysLeft!=null&&ON_ROAD_SET.has(c.status)&&!ended?`<div class="t-row"><span>Days remaining</span><span class="t-val" style="color:${daysLeft<=30?'#E24B4A':daysLeft<=60?'#EF9F27':'inherit'}">${daysLeft}d left</span></div>`:''}
