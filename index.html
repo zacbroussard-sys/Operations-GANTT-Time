@@ -137,7 +137,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="leg-item"><div class="leg-swatch" style="background:#B4B2A9;opacity:.6"></div>Ended (stale status)</div>
         <div class="leg-item"><div class="leg-swatch" style="background:repeating-linear-gradient(-45deg,rgba(80,36,2,.28) 0 2px,transparent 2px 6px),#D3D1C7"></div>Shop buffer (6d)</div>
         <div class="leg-item"><div style="width:3px;height:11px;background:#F59E0B;border-radius:2px;flex-shrink:0;margin-right:2px"></div>First event date · <span style="color:#F59E0B;font-weight:700">⚡</span> = event dictates start</div>
-        <div class="leg-item"><div class="leg-swatch" style="border:1.5px dashed #B4B2A9;background:transparent"></div>Awaiting art</div>
+        <div class="leg-item"><div class="leg-swatch" style="border:1.5px dashed #B4B2A9;background:transparent"></div>No artwork approved</div>
       </div>
     </div>
     <div class="gantt-wrap" id="ganttWrap"></div>
@@ -232,7 +232,7 @@ async function loadData() {
           effectiveStart: toISO(effectiveStart),
           effectiveEnd: toISO(effectiveEnd),
           barStart: toISO(parseDate(r.barStart)),
-          artworkApproved: r.artworkApproved||r.artwork_approved||r['artworkApproved']||'',
+          artworkApproved: (r.artworkApproved||'').toString().toLowerCase()==='true',
           firstEventDate: toISO(parseDate(r.firstEventDate)),
           carQty: parseInt(r.carQty) || 0,
           onRoad: parseInt(r.onRoad) || 0,
@@ -325,7 +325,7 @@ function attentionReasons(c){
   const pp=c.carQty>0?pipe/c.carQty:0;
   const reasons=[];
   if(d<0) reasons.push({tag:'overdue',label:`Start was ${Math.abs(d)}d ago — not yet on road`,color:'#A32D2D'});
-  if(!c.artworkApproved&&!c.barStart) reasons.push({tag:'no-art',label:'No artwork approval date',color:'#7A4F00'});
+  if(!c.artworkApproved) reasons.push({tag:'no art',label:'Artwork not yet approved',color:'#7A4F00'});
   if(d<=7&&pipe===0) reasons.push({tag:'critical',label:`0 cars scheduled — starts in ${Math.max(0,d)}d`,color:'#A32D2D'});
   else if(d<=14&&pp<0.5) reasons.push({tag:'behind',label:`Only ${Math.round(pp*100)}% pipeline filled — ${d}d to start`,color:'#E24B4A'});
   const fed=c.firstEventDate?parseLocalDate(c.firstEventDate):null;
@@ -418,9 +418,19 @@ function buildTimeline(c,layout){
   const qty=Math.max(c.carQty,1),urgColor=urgencyColor(c),rd=reportingDates(c);
   const ended=isEndedStatus(c);
 
+  const hasArt=c.artworkApproved===true;
+
   if(c.status==='Not Started'){
     const sx=X(c.effectiveStart),ex=X(c.effectiveEnd),bw=Math.max(4,ex-sx);
-    html+=`<div class="bar-pending" style="left:${sx}px;width:${bw}px;border-color:${urgColor}" onmouseenter="showTip(event,'${c.id}')" onmouseleave="hideTip()"></div>`;
+    if(hasArt){
+      // Has art — render like any other status with a solid bar
+      html+=`<div class="bar-preroad" style="left:${sx}px;width:${bw}px;background:#D3D1C7;" onmouseenter="showTip(event,'${c.id}')" onmouseleave="hideTip()">
+        <div class="bar-seg" style="width:100%;background:#D3D1C7;color:#555;flex:1"></div>
+      </div>`;
+    } else {
+      // No art — dashed outline
+      html+=`<div class="bar-pending" style="left:${sx}px;width:${bw}px;border-color:${urgColor}" onmouseenter="showTip(event,'${c.id}')" onmouseleave="hideTip()"></div>`;
+    }
     if(sx>=0&&sx<=totalW)html+=`<div class="start-label" style="left:${sx}px;color:${urgColor}">${fmtShortDate(c.effectiveStart)}</div>`;
     const _d0=liveDaysToStart(c);
     if(_d0>0&&bw>22)html+=`<div class="days-label" style="left:${sx+4}px;color:${urgColor}">${_d0}d</div>`;
@@ -433,7 +443,9 @@ function buildTimeline(c,layout){
     const apN=Math.max(0,Math.min(c.approved,qty-onRN-schN)),unN=Math.max(0,qty-onRN-schN-apN);
     const onRW=Math.round(onRN/qty*bw),schW=Math.round(schN/qty*bw),apW=Math.round(apN/qty*bw),unW=Math.max(0,bw-onRW-schW-apW);
     const seg=(w,bg,color,count)=>w<=0?'':`<div class="bar-seg" style="width:${w}px;background:${bg};color:${color}">${w>=MIN_LABEL&&count>0?count:''}</div>`;
-    html+=`<div class="bar-preroad" style="left:${bsx}px;width:${bw}px" onmouseenter="showTip(event,'${c.id}')" onmouseleave="hideTip()">
+    // No-art: show dashed outline over the bar
+    const noArtStyle=!hasArt?`outline:1.5px dashed ${urgColor};outline-offset:-1px;`:'';
+    html+=`<div class="bar-preroad" style="left:${bsx}px;width:${bw}px;${noArtStyle}" onmouseenter="showTip(event,'${c.id}')" onmouseleave="hideTip()">
       ${seg(onRW,'#1D9E75','#fff',onRN)}${seg(schW,'#85B7EB','#0C2F52',schN)}${seg(apW,'#AFA9EC','#2A2470',apN)}
       ${unW>0?`<div class="bar-seg" style="width:${unW}px;background:#D3D1C7;color:#555;flex:1">${unW>=MIN_LABEL&&unN>0?unN:''}</div>`:''}
     </div>`;
@@ -519,7 +531,7 @@ function buildTimeline(c,layout){
   }
   // End date label for active on-road campaigns
   if(!ended&&rex>=0&&rex<=totalW){
-    const dl=daysLeft!==null?daysLeft:Math.round((parseLocalDate(c.effectiveEnd)-getToday())/86400000);
+    const dl=Math.round((parseLocalDate(c.effectiveEnd)-getToday())/86400000);
     const endColor=dl<=14?'#E24B4A':dl<=30?'#EF9F27':'rgba(255,255,255,.7)';
     html+=`<div style="position:absolute;top:1px;left:${rex}px;transform:translateX(-50%);font-size:8px;font-weight:500;color:${endColor};white-space:nowrap;pointer-events:none;z-index:5">${fmtShortDate(c.effectiveEnd)}</div>`;
   }
@@ -754,6 +766,7 @@ function showTip(e,id){
         <span class="pill" style="background:${col.bg};color:${col.text}">${c.status}</span>
         <span class="pill" style="background:#f0f0ee;color:#555">${rd.months}mo</span>
         <span class="pill" style="background:#f0f0ee;color:#555">${c.market}</span>
+        ${c.artworkApproved?`<span class="pill" style="background:#EAF3DE;color:#085041">✓ art approved</span>`:`<span class="pill" style="background:#FFF3CD;color:#7A4F00">⚠ no art</span>`}
         ${ended?`<span class="pill" style="background:#FFF3CD;color:#7A4F00">⚠ stale status</span>`:''}
         ${fed&&fedDays!=null&&fedDays>=0&&fedDays<=14?`<span class="pill" style="background:#FCEBEB;color:#A32D2D">⚡ event in ${fedDays}d</span>`:''}
       </div>
