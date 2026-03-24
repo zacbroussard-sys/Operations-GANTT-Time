@@ -137,6 +137,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="leg-item"><div class="leg-swatch" style="background:#1D9E75;outline:2px solid #E24B4A;outline-offset:-1px"></div>Cars missing</div>
         <div class="leg-item"><div class="leg-swatch" style="background:#B4B2A9;opacity:.6"></div>Ended (stale status)</div>
         <div class="leg-item"><div class="leg-swatch" style="background:repeating-linear-gradient(-45deg,rgba(80,36,2,.28) 0 2px,transparent 2px 6px),#D3D1C7"></div>Shop buffer (6d)</div>
+        <div class="leg-item"><div style="width:3px;height:11px;background:#F59E0B;border-radius:2px;flex-shrink:0"></div><span style="font-size:11px;font-weight:700;color:#F59E0B;margin:0 2px 0 1px">E</span>First event</div>
         <div class="leg-item"><div class="leg-swatch" style="border:1.5px dashed #B4B2A9;background:transparent"></div>Awaiting art</div>
       </div>
     </div>
@@ -235,6 +236,7 @@ async function loadData() {
           effectiveStart: toISO(effectiveStart),
           effectiveEnd: toISO(effectiveEnd),
           barStart: toISO(parseDate(r.barStart)),
+          firstEventDate: toISO(parseDate(r.firstEventDate)),
           carQty: parseInt(r.carQty) || 0,
           onRoad: parseInt(r.onRoad) || 0,
           offRoad: parseInt(r.offRoad) || 0,
@@ -441,6 +443,24 @@ function buildTimeline(c,layout){
           onmouseleave="hideTip()"></div>`;
       }
     });
+    // First event date marker — amber vertical line inside on-road bar
+    if(c.firstEventDate){
+      const fed=new Date(c.firstEventDate);
+      const fedX=X(fed);
+      const fedDays=daysUntil(fed);
+      const fedColor=fedDays<0?'#A32D2D':fedDays<=7?'#E24B4A':fedDays<=14?'#EF9F27':'#F59E0B';
+      if(fedX>=rsx&&fedX<=rex){
+        // Event is within on-road bar — show amber marker line + E label
+        html+=`<div style="position:absolute;top:10px;bottom:10px;width:3px;left:${fedX}px;background:${fedColor};border-radius:2px;z-index:6;pointer-events:none"></div>`;
+        html+=`<div style="position:absolute;top:1px;left:${fedX}px;transform:translateX(-50%);font-size:8px;font-weight:700;color:${fedColor};pointer-events:none;z-index:7;white-space:nowrap">E</div>`;
+      } else if(fedX<rsx){
+        // Event is before campaign start — show on recruitment bar if visible
+        if(fedX>=0&&fedX<=totalW){
+          html+=`<div style="position:absolute;top:10px;bottom:10px;width:3px;left:${fedX}px;background:${fedColor};border-radius:2px;z-index:6;pointer-events:none"></div>`;
+          html+=`<div style="position:absolute;top:1px;left:${fedX}px;transform:translateX(-50%);font-size:8px;font-weight:700;color:${fedColor};pointer-events:none;z-index:7;white-space:nowrap">E</div>`;
+        }
+      }
+    }
   } else {
     const endedDaysAgo=Math.round((getToday()-new Date(c.effectiveEnd))/86400000);
     if(rex>=0&&rex<=totalW)html+=`<div class="start-label" style="left:${rex}px;color:#A32D2D;font-size:8px">${endedDaysAgo}d ago</div>`;
@@ -614,81 +634,118 @@ function render(){
 const dataMap = {};
 
 function showTip(e,id){
-  const c=dataMap[id];if(!c)return;
-  const col=STATUS_COLORS[c.status]||STATUS_COLORS["Not Started"];
-  const qty=Math.max(c.carQty,1),onRN=Math.min(c.onRoad,qty),remaining=Math.max(0,qty-onRN);
-  const schN=Math.min(c.scheduled,qty-onRN),apN=Math.min(c.approved,qty-onRN-schN),unN=Math.max(0,qty-onRN-schN-apN);
-  const pipe=c.scheduled+c.installedNoPOI,od=isOverdue(c),isD=c.status==='Deinstalling';
-  const ended=isEndedStatus(c);
-  const TODAY=getToday();
-  const daysOnRoad=ON_ROAD_SET.has(c.status)&&c.effectiveStart?Math.round((TODAY-new Date(c.effectiveStart))/86400000):null;
-  const campaignTotalDays=c.effectiveStart&&c.effectiveEnd?Math.round((new Date(c.effectiveEnd)-new Date(c.effectiveStart))/86400000):null;
-  const pctElapsed=daysOnRoad&&campaignTotalDays?Math.min(100,Math.round(daysOnRoad/campaignTotalDays*100)):null;
-  const daysLeft=c.effectiveEnd?Math.round((new Date(c.effectiveEnd)-TODAY)/86400000):null;
-  const dLabel=c.daysToStart<0?(ON_ROAD_SET.has(c.status)?`Started ${Math.abs(c.daysToStart)}d ago`:`${Math.abs(c.daysToStart)}d overdue`):`Starts in ${c.daysToStart}d`;
-  const rd=reportingDates(c);
+  try {
+    const c=dataMap[id];if(!c)return;
+    const col=STATUS_COLORS[c.status]||STATUS_COLORS["Not Started"];
+    const qty=Math.max(c.carQty,1);
+    const onRN=Math.min(c.onRoad,qty);
+    const schN=Math.min(c.scheduled,qty-onRN);
+    const apN=Math.min(c.approved,qty-onRN-schN);
+    const unN=Math.max(0,qty-onRN-schN-apN);
+    const isD=c.status==='Deinstalling';
+    const ended=isEndedStatus(c);
+    const od=isOverdue(c);
+    const TODAY=getToday();
+    const rd=reportingDates(c);
 
-  // Pipeline visual bar widths
-  const onRW=Math.round(onRN/qty*100),schW=Math.round(schN/qty*100),apW=Math.round(apN/qty*100),unW=Math.max(0,100-onRW-schW-apW);
+    // Timeline calcs
+    const daysOnRoad=ON_ROAD_SET.has(c.status)&&c.effectiveStart?Math.round((TODAY-new Date(c.effectiveStart))/86400000):null;
+    const totalDays=c.effectiveStart&&c.effectiveEnd?Math.round((new Date(c.effectiveEnd)-new Date(c.effectiveStart))/86400000):null;
+    const pctElapsed=daysOnRoad!=null&&totalDays?Math.min(100,Math.round(daysOnRoad/totalDays*100)):null;
+    const daysLeft=c.effectiveEnd?Math.round((new Date(c.effectiveEnd)-TODAY)/86400000):null;
+    const dLabel=c.daysToStart<0?(ON_ROAD_SET.has(c.status)?`Started ${Math.abs(c.daysToStart)}d ago`:`${Math.abs(c.daysToStart)}d overdue`):`Starts in ${c.daysToStart}d`;
 
-  const rdRow=(label,date,color)=>{
-    const dl=daysUntil(date),sc=dl<0?'overdue':dl<=7?'due-soon':'';
-    const suffix=dl<0?`<span style="color:#A32D2D;font-weight:600"> ${Math.abs(dl)}d OD</span>`:dl===0?`<span style="color:#E24B4A;font-weight:600"> today!</span>`:dl<=14?`<span style="color:#E24B4A"> ${dl}d</span>`:dl<=30?`<span style="color:#EF9F27"> ${dl}d</span>`:`<span style="color:#aaa"> ${dl}d</span>`;
-    return`<div class="t-row"><span><span style="display:inline-block;width:8px;height:8px;background:${color};border-radius:1px;margin-right:4px;transform:translateY(1px)"></span>${label}</span><span class="t-val ${sc}">${fmtDate(date)}${suffix}</span></div>`;
-  };
+    // First event date
+    const fed=c.firstEventDate?new Date(c.firstEventDate):null;
+    const fedDays=fed?Math.round((fed-TODAY)/86400000):null;
+    const fedBeforeStart=fed&&c.effectiveStart&&fed<new Date(c.effectiveStart);
+    const fedColor=fedDays!=null?(fedDays<0?'#A32D2D':fedDays<=7?'#E24B4A':fedDays<=14?'#EF9F27':'#1a1a18'):'#1a1a18';
+    const fedSuffix=fedDays!=null?(fedDays<0?` — ${Math.abs(fedDays)}d ago`:fedDays===0?' — today!':` — in ${fedDays}d`):'';
 
-  const tip=document.getElementById("tooltip");
-  tip.style.display="block";
-  tip.innerHTML=`
-    <div class="t-name">${c.name}</div>
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap">
-      <span class="pill" style="background:${col.bg};color:${col.text}">${c.status}</span>
-      <span class="pill" style="background:#f0f0ee;color:#555">${rd.months} month${rd.months!==1?'s':''}</span>
-      <span class="pill" style="background:#f0f0ee;color:#555">${c.market}</span>
-      ${ended?`<span class="pill" style="background:#FFF3CD;color:#7A4F00">⚠ stale status</span>`:''}
-    </div>
+    // Pipeline bar widths
+    const onRW=Math.round(onRN/qty*100),schW=Math.round(schN/qty*100),apW=Math.round(apN/qty*100),unW=Math.max(0,100-onRW-schW-apW);
 
-    ${ended?`<div style="background:#FFF3CD;color:#7A4F00;font-size:11px;padding:6px 8px;border-radius:6px;margin-bottom:10px;font-weight:500">⚠ Campaign ended ${Math.round((TODAY-new Date(c.effectiveEnd))/86400000)}d ago — status not yet updated in source app</div>`:''}
+    // Reporting row helper
+    const rdRow=(label,date,shape,color)=>{
+      const dl=daysUntil(date);
+      const sc=dl<0?'#A32D2D':dl<=7?'#E24B4A':dl<=14?'#EF9F27':dl<=30?'#EF9F27':'#aaa';
+      const suffix=dl<0?` <span style="color:#A32D2D;font-weight:600">${Math.abs(dl)}d OD</span>`:dl===0?` <span style="color:#E24B4A;font-weight:600">today!</span>`:` <span style="color:${sc}">${dl}d</span>`;
+      const dot=shape==='circle'?`border-radius:50%`:shape==='square'?`border-radius:2px`:`transform:translateY(1px) rotate(45deg);border-radius:1px`;
+      return`<div class="t-row"><span><span style="display:inline-block;width:8px;height:8px;background:${color};${dot};margin-right:5px;flex-shrink:0"></span>${label}</span><span class="t-val">${fmtDate(date)}${suffix}</span></div>`;
+    };
 
-    <div class="t-section">Timeline</div>
-    <div class="t-grid">
-      <div class="t-row"><span>Start</span><span class="t-val">${fmtDate(new Date(c.effectiveStart))}</span></div>
-      <div class="t-row"><span>End</span><span class="t-val">${fmtDate(new Date(c.effectiveEnd))}</span></div>
-      ${!ON_ROAD_SET.has(c.status)?`<div class="t-row"><span>Recruitment</span><span class="t-val" style="color:${od?'#A32D2D':c.daysToStart<=14?'#E24B4A':'#1a1a18'}">${dLabel}</span></div>`:''}
-      ${daysOnRoad!==null?`<div class="t-row"><span>On road</span><span class="t-val">${daysOnRoad}d (${pctElapsed}% elapsed)</span></div>`:''}
-      ${daysLeft!==null&&ON_ROAD_SET.has(c.status)&&!ended?`<div class="t-row"><span>Days remaining</span><span class="t-val" style="color:${daysLeft<=30?'#E24B4A':daysLeft<=60?'#EF9F27':'#1a1a18'}">${daysLeft}d left</span></div>`:''}
-    </div>
+    // Deinstall calcs (only used when isD)
+    const ddl=isD?deinstDaysLeft(c):null;
+    const ddlColor=ddl!=null?(ddl<0?'#A32D2D':ddl<=7?'#E24B4A':'#1a1a18'):'#1a1a18';
+    const ddlSuffix=ddl!=null?(ddl<0?`${Math.abs(ddl)}d OD`:`${ddl}d left`):'';
 
-    <div class="t-section">${isD?'Removal status':'Pipeline — '+qty+' cars total'}</div>
-    ${isD?`
-      <div class="t-row"><span>Still on road</span><span class="t-val" style="color:${c.onRoad===0?'#1D9E75':'#E24B4A'}">${c.onRoad} / ${c.carQty}</span></div>
-      <div class="t-row"><span>Removed</span><span class="t-val">${c.carQty-c.onRoad} / ${c.carQty}</span></div>
-      <div class="t-row"><span>Removal deadline</span><span class="t-val" style="color:${deinstDaysLeft(c)<0?'#A32D2D':deinstDaysLeft(c)<=7?'#E24B4A':'#1a1a18'}">${fmtDate(deinstDeadline(c))} (${deinstDaysLeft(c)<0?Math.abs(deinstDaysLeft(c))+'d OD':deinstDaysLeft(c)+'d left'})</span></div>
-    `:`
-      <div class="t-pipeline-bar">
-        ${onRW>0?`<div class="t-pipeline-seg" style="width:${onRW}%;background:#1D9E75"></div>`:''}
-        ${schW>0?`<div class="t-pipeline-seg" style="width:${schW}%;background:#85B7EB"></div>`:''}
-        ${apW>0?`<div class="t-pipeline-seg" style="width:${apW}%;background:#AFA9EC"></div>`:''}
-        ${unW>0?`<div class="t-pipeline-seg" style="width:${unW}%;background:#ebebea"></div>`:''}
+    // Next monthly drop
+    const nextMonthly=rd.monthlies.find(d=>d>=TODAY)||null;
+
+    const tip=document.getElementById("tooltip");
+    tip.style.display="block";
+    tip.innerHTML=`
+      <div class="t-name">${c.name}</div>
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:10px;flex-wrap:wrap">
+        <span class="pill" style="background:${col.bg};color:${col.text}">${c.status}</span>
+        <span class="pill" style="background:#f0f0ee;color:#555">${rd.months}mo</span>
+        <span class="pill" style="background:#f0f0ee;color:#555">${c.market}</span>
+        ${ended?`<span class="pill" style="background:#FFF3CD;color:#7A4F00">⚠ stale status</span>`:''}
+        ${fed&&fedDays!=null&&fedDays>=0&&fedDays<=14?`<span class="pill" style="background:#FCEBEB;color:#A32D2D">⚡ event in ${fedDays}d</span>`:''}
       </div>
+
+      ${ended?`<div style="background:#FFF3CD;color:#7A4F00;font-size:11px;padding:6px 8px;border-radius:6px;margin-bottom:10px;font-weight:500">⚠ Campaign ended ${Math.round((TODAY-new Date(c.effectiveEnd))/86400000)}d ago — status not yet updated in source</div>`:''}
+
+      <div class="t-section">Timeline</div>
       <div class="t-grid">
-        <div class="t-row"><span><span style="color:#1D9E75">■</span> On road</span><span class="t-val">${onRN} / ${qty}</span></div>
-        <div class="t-row"><span><span style="color:#85B7EB">■</span> Scheduled</span><span class="t-val">${schN}</span></div>
-        <div class="t-row"><span><span style="color:#AFA9EC">■</span> Approved</span><span class="t-val">${apN}</span></div>
-        <div class="t-row"><span>░ Unfilled</span><span class="t-val">${unN}</span></div>
+        <div class="t-row"><span>Start</span><span class="t-val">${fmtDate(new Date(c.effectiveStart))}</span></div>
+        <div class="t-row"><span>End</span><span class="t-val">${fmtDate(new Date(c.effectiveEnd))}</span></div>
+        ${!ON_ROAD_SET.has(c.status)?`<div class="t-row"><span>Recruitment</span><span class="t-val" style="color:${od?'#A32D2D':c.daysToStart<=14?'#E24B4A':'inherit'}">${dLabel}</span></div>`:''}
+        ${daysOnRoad!=null?`<div class="t-row"><span>On road</span><span class="t-val">${daysOnRoad}d (${pctElapsed}% elapsed)</span></div>`:''}
+        ${daysLeft!=null&&ON_ROAD_SET.has(c.status)&&!ended?`<div class="t-row"><span>Days remaining</span><span class="t-val" style="color:${daysLeft<=30?'#E24B4A':daysLeft<=60?'#EF9F27':'inherit'}">${daysLeft}d left</span></div>`:''}
       </div>
-      ${hasMissingCars(c)&&!ended?`<div style="background:#FCEBEB;color:#A32D2D;font-size:11px;padding:5px 8px;border-radius:5px;margin-top:4px;font-weight:500">⚠ ${qty-onRN} car${qty-onRN!==1?'s':''} still needed on road</div>`:''}
-    `}
 
-    <div class="t-section">Reporting schedule</div>
-    ${rdRow('POI','#6B63D4')?'':''}
-    ${rdRow('POI report',rd.poi,'#6B63D4')}
-    ${rd.cla?rdRow('CLA',rd.cla,'#0C447C'):`<div class="t-row"><span><span style="display:inline-block;width:8px;height:8px;background:#0C447C;border-radius:50%;margin-right:4px;transform:translateY(1px)"></span>CLA</span><span class="t-val" style="color:#aaa">N/A — campaign ≤5 months</span></div>`}
-    ${rdRow('CRA',rd.cra,'#712B13')}
-    <div class="t-row" style="margin-top:2px"><span>Monthly report drops</span><span class="t-val">${rd.monthlies.length} total · due 10th each month</span></div>
-    ${rd.monthlies.length>0?`<div style="font-size:10px;color:#aaa;margin-top:2px">Next: ${fmtDate(rd.monthlies.find(d=>d>=TODAY)||rd.monthlies[rd.monthlies.length-1])}</div>`:''}
-  `;
-  moveTip(e);
+      ${fed?`
+      <div class="t-section">First Event</div>
+      <div class="t-row">
+        <span>${fedBeforeStart?'⚡ Hard deadline (before start)':'Event date (on road)'}</span>
+        <span class="t-val" style="color:${fedColor}">${fmtDate(fed)}${fedSuffix}</span>
+      </div>
+      ${fedBeforeStart?`<div style="font-size:10px;color:#A32D2D;margin-top:2px">Event is before campaign start — treat as recruitment deadline</div>`:''}
+      `:''}
+
+      <div class="t-section">${isD?'Removal status':'Pipeline — '+qty+' car'+(qty!==1?'s':'')}</div>
+      ${isD?`
+        <div class="t-row"><span>Still on road</span><span class="t-val" style="color:${c.onRoad===0?'#1D9E75':'#E24B4A'}">${c.onRoad} / ${c.carQty}</span></div>
+        <div class="t-row"><span>Removed</span><span class="t-val">${c.carQty-c.onRoad} / ${c.carQty}</span></div>
+        <div class="t-row"><span>Removal deadline</span><span class="t-val" style="color:${ddlColor}">${fmtDate(deinstDeadline(c))} (${ddlSuffix})</span></div>
+      `:`
+        <div class="t-pipeline-bar">
+          ${onRW>0?`<div class="t-pipeline-seg" style="width:${onRW}%;background:#1D9E75"></div>`:''}
+          ${schW>0?`<div class="t-pipeline-seg" style="width:${schW}%;background:#85B7EB"></div>`:''}
+          ${apW>0?`<div class="t-pipeline-seg" style="width:${apW}%;background:#AFA9EC"></div>`:''}
+          ${unW>0?`<div class="t-pipeline-seg" style="width:${unW}%;background:#ebebea"></div>`:''}
+        </div>
+        <div class="t-grid">
+          <div class="t-row"><span><span style="color:#1D9E75">■</span> On road</span><span class="t-val">${onRN} / ${qty}</span></div>
+          <div class="t-row"><span><span style="color:#85B7EB">■</span> Scheduled</span><span class="t-val">${schN}</span></div>
+          <div class="t-row"><span><span style="color:#AFA9EC">■</span> Approved</span><span class="t-val">${apN}</span></div>
+          <div class="t-row"><span>░ Unfilled</span><span class="t-val">${unN}</span></div>
+        </div>
+        ${hasMissingCars(c)&&!ended?`<div style="background:#FCEBEB;color:#A32D2D;font-size:11px;padding:5px 8px;border-radius:5px;margin-top:5px;font-weight:500">⚠ ${qty-onRN} car${qty-onRN!==1?'s':''} still needed on road</div>`:''}
+      `}
+
+      <div class="t-section">Reporting schedule</div>
+      ${rdRow('POI report',rd.poi,'diamond','#6B63D4')}
+      ${rd.cla?rdRow('CLA',rd.cla,'circle','#0C447C'):`<div class="t-row"><span><span style="display:inline-block;width:8px;height:8px;background:#0C447C;border-radius:50%;margin-right:5px"></span>CLA</span><span class="t-val" style="color:#aaa">N/A — ≤5 months</span></div>`}
+      ${rdRow('CRA',rd.cra,'square','#712B13')}
+      <div class="t-row" style="margin-top:3px"><span>Monthly drops</span><span class="t-val">${rd.monthlies.length} total · 10th each month</span></div>
+      ${nextMonthly?`<div style="font-size:11px;color:#666;margin-top:2px">Next drop: <strong>${fmtDate(nextMonthly)}</strong> (in ${Math.round((nextMonthly-TODAY)/86400000)}d)</div>`:''}
+    `;
+    moveTip(e);
+  } catch(err) {
+    console.error('Tooltip error:', err);
+  }
 }
 
 function showReportTip(e,label,dateStr,dl){
