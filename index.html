@@ -149,7 +149,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <script>
 // ── Config ────────────────────────────────────────────────────────────────────
 const SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQLIkLFu1TgP2FYdhvho5WR44XPrXgzob6l1GcC2bH1W6nVk99rIJLb16rXRqgzIzCdDm7rzqSJJJQj/pub?gid=0&single=true&output=csv';
-const CORS_PROXY = 'https://corsproxy.io/?';
+const CORS_PROXIES = [
+  'https://api.allorigins.win/raw?url=',
+  'https://corsproxy.io/?',
+  'https://api.codetabs.com/v1/proxy?quest=',
+];
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const ON_ROAD_SET = new Set(["On Road","Deinstalling"]);
@@ -206,28 +210,34 @@ async function loadData() {
   document.getElementById('errorState').style.display = 'none';
 
   try {
-    // Try direct first, fall back to CORS proxy — 8 second timeout each
     const fetchWithTimeout=(url,ms=8000)=>{
       const controller=new AbortController();
-      setTimeout(()=>controller.abort(),ms);
-      return fetch(url,{signal:controller.signal});
+      const t=setTimeout(()=>controller.abort(),ms);
+      return fetch(url,{signal:controller.signal}).finally(()=>clearTimeout(t));
     };
 
-    let res, method='direct';
+    let res=null, lastErr='';
+    // Try direct first
     try {
-      res = await fetchWithTimeout(SHEETS_CSV_URL);
-      if (!res.ok) throw new Error('direct failed');
-    } catch(e) {
-      method='proxy';
-      res = await fetchWithTimeout(CORS_PROXY + encodeURIComponent(SHEETS_CSV_URL));
+      res=await fetchWithTimeout(SHEETS_CSV_URL);
+      if(!res.ok)throw new Error(`HTTP ${res.status}`);
+    } catch(e) { lastErr=e.message; res=null; }
+
+    // Try each proxy until one works
+    for(const proxy of CORS_PROXIES){
+      if(res)break;
+      try {
+        res=await fetchWithTimeout(proxy+encodeURIComponent(SHEETS_CSV_URL));
+        if(!res.ok)throw new Error(`HTTP ${res.status}`);
+      } catch(e){ lastErr=e.message; res=null; }
     }
 
-    if (!res.ok) throw new Error(`HTTP ${res.status} via ${method}`);
+    if(!res) throw new Error(`All fetch attempts failed. Last error: ${lastErr}`);
     const text = await res.text();
     if(!text||text.length<50) throw new Error('Sheet returned empty response — check it is published as CSV');
-    if(text.includes('<html')||text.includes('<!DOCTYPE')) throw new Error('Sheet returned an HTML page instead of CSV — check the published URL and make sure the GANTT tab is selected');
+    if(text.includes('<html')||text.includes('<!DOCTYPE')) throw new Error('Sheet returned HTML instead of CSV — check the published URL and make sure the GANTT tab is selected');
     const rows = parseCSV(text);
-    if(rows.length===0) throw new Error('CSV parsed but found 0 rows — check GANTT tab headers match expected columns');
+    if(rows.length===0) throw new Error('CSV parsed but found 0 rows — check GANTT tab headers');
 
     RAW = rows
       .filter(r => r.id && r.id !== '' && r.status && r.status !== '' && r.name && !r.name.toLowerCase().includes('test'))
@@ -557,7 +567,6 @@ function buildRow(c,layout,isAttn=false){
   const hasWarning=reasons.length>0&&!hasCritical;
   const rowClass=ended?'ended-row':deinstOD?'deinst-overdue-row':(od||hasCritical)?'overdue-row':hasWarning?'attention-row':'';
   const nameClass=ended?'ended':(od||hasCritical)?'overdue':hasWarning?'attention':'';
-  const reasons=attentionReasons(c);
   const badges=[
     od&&!ended?`<span class="alert-badge" style="margin-left:3px">!</span>`:'',
     missing?`<span class="alert-badge" style="margin-left:3px">cars missing</span>`:'',
