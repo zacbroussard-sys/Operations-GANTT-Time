@@ -78,7 +78,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .days-label{position:absolute;top:13px;height:12px;display:flex;align-items:center;font-size:8px;font-weight:500;white-space:nowrap;pointer-events:none;z-index:5;padding:0 2px}
 .today-line{position:absolute;top:0;bottom:0;width:1.5px;background:#E24B4A;z-index:6;pointer-events:none}
 .today-line::before{content:'today';position:absolute;top:0;left:3px;font-size:8px;color:#E24B4A;white-space:nowrap}
-.start-marker{position:absolute;top:6px;bottom:6px;width:4px;z-index:5;border-radius:2px;pointer-events:none}
+.start-marker{position:absolute;top:6px;bottom:6px;width:4px;z-index:4;border-radius:2px;pointer-events:none}
 .tooltip{position:fixed;background:#fff;border:0.5px solid #d0d0cc;border-radius:10px;padding:16px 18px;font-size:12px;z-index:100;pointer-events:none;max-width:480px;min-width:360px;display:none;box-shadow:0 6px 24px rgba(0,0,0,.13);max-height:90vh;overflow-y:auto}
 .t-name{font-weight:700;margin-bottom:6px;color:#1a1a18;font-size:15px;line-height:1.3}
 .t-row{display:flex;justify-content:space-between;gap:16px;margin-bottom:4px;color:#666;font-size:12px}
@@ -137,7 +137,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="leg-item"><div class="leg-swatch" style="background:#1D9E75;outline:2px solid #E24B4A;outline-offset:-1px"></div>Cars missing</div>
         <div class="leg-item"><div class="leg-swatch" style="background:#B4B2A9;opacity:.6"></div>Ended (stale status)</div>
         <div class="leg-item"><div class="leg-swatch" style="background:repeating-linear-gradient(-45deg,rgba(80,36,2,.28) 0 2px,transparent 2px 6px),#D3D1C7"></div>Shop buffer (6d)</div>
-        <div class="leg-item"><div style="width:3px;height:11px;background:#F59E0B;border-radius:2px;flex-shrink:0"></div><span style="font-size:11px;font-weight:700;color:#F59E0B;margin:0 2px 0 1px">E</span>First event</div>
+        <div class="leg-item"><div style="width:3px;height:11px;background:#F59E0B;border-radius:2px;flex-shrink:0;margin-right:2px"></div>First event date · <span style="color:#F59E0B;font-weight:700">⚡</span> = event dictates start</div>
         <div class="leg-item"><div class="leg-swatch" style="border:1.5px dashed #B4B2A9;background:transparent"></div>Awaiting art</div>
       </div>
     </div>
@@ -406,7 +406,18 @@ function buildTimeline(c,layout){
     </div>`;
     const bufSX=X(addDays(c.effectiveStart,-SHOP_BUFFER)),bufW=Math.max(0,bex-bufSX);
     if(bufW>0&&!ended)html+=`<div class="buf-overlay" style="left:${bufSX}px;width:${bufW}px"></div>`;
-    if(bex>=0&&bex<=totalW)html+=`<div class="start-label" style="left:${bex}px;color:${ended?'#B4B2A9':urgColor}">${fmtShortDate(c.effectiveStart)}</div>`;
+    // Start label — flag with ⚡ if event date is dictating the deadline
+    const fedPre=c.firstEventDate?new Date(c.firstEventDate):null;
+    const fedBeforePre=fedPre&&fedPre<new Date(c.effectiveStart);
+    if(bex>=0&&bex<=totalW){
+      if(fedBeforePre){
+        const fedPreDays=daysUntil(fedPre);
+        const fedPreColor=fedPreDays<0?'#A32D2D':fedPreDays<=7?'#E24B4A':fedPreDays<=14?'#EF9F27':'#F59E0B';
+        html+=`<div class="start-label" style="left:${bex}px;color:${fedPreColor};font-weight:700">⚡${fmtShortDate(c.effectiveStart)}</div>`;
+      } else {
+        html+=`<div class="start-label" style="left:${bex}px;color:${ended?'#B4B2A9':urgColor}">${fmtShortDate(c.effectiveStart)}</div>`;
+      }
+    }
     if(c.daysToStart>0&&bw>22)html+=`<div class="days-label" style="left:${bsx+4}px;color:${urgColor};background:rgba(255,255,255,.7);border-radius:2px;padding:0 2px">${c.daysToStart}d</div>`;
     else if(c.daysToStart<0&&!ON_ROAD_SET.has(c.status)&&bw>22)html+=`<div class="days-label" style="left:${bsx+4}px;color:#A32D2D;background:rgba(255,255,255,.7);border-radius:2px;padding:0 2px">${Math.abs(c.daysToStart)}d OD</div>`;
   }
@@ -425,7 +436,20 @@ function buildTimeline(c,layout){
   const rsx=X(c.effectiveStart),rex=X(c.effectiveEnd),barW=Math.max(4,rex-rsx);
   html+=`<div class="bar-onroad ${ended?'ended':''} ${missing&&!ended?'missing-cars':''}" style="left:${rsx}px;width:${barW}px;"
     onmouseenter="showTip(event,'${c.id}')" onmouseleave="hideTip()"></div>`;
-  html+=`<div class="start-marker" style="left:${rsx}px;background:${ended?'#B4B2A9':'#1D9E75'}"></div>`;
+  // Start date label — check if event date is dictating the deadline
+  const fed=c.firstEventDate?new Date(c.firstEventDate):null;
+  const fedBeforeStart=fed&&new Date(c.effectiveStart)&&fed<new Date(c.effectiveStart);
+  if(!ended){
+    if(fedBeforeStart){
+      // Event is the real deadline — show event date in amber with ⚡ flag
+      const fedDays=daysUntil(fed);
+      const fedColor=fedDays<0?'#A32D2D':fedDays<=7?'#E24B4A':fedDays<=14?'#EF9F27':'#F59E0B';
+      if(rsx>=0&&rsx<=totalW)html+=`<div class="start-label" style="left:${rsx}px;color:${fedColor};font-weight:700">⚡${fmtShortDate(c.effectiveStart)}</div>`;
+    } else {
+      if(rsx>=0&&rsx<=totalW)html+=`<div class="start-label" style="left:${rsx}px;color:${ended?'#B4B2A9':urgColor}">${fmtShortDate(c.effectiveStart)}</div>`;
+    }
+  }
+  html+=`<div class="start-marker" style="left:${rsx+2}px;background:${ended?'#B4B2A9':'#1D9E75'}"></div>`;
 
   if(!ended){
     rd.monthlies.forEach(md=>{
@@ -443,22 +467,15 @@ function buildTimeline(c,layout){
           onmouseleave="hideTip()"></div>`;
       }
     });
-    // First event date marker — amber vertical line inside on-road bar
+    // First event date marker — vertical line with date label above
     if(c.firstEventDate){
       const fed=new Date(c.firstEventDate);
       const fedX=X(fed);
       const fedDays=daysUntil(fed);
       const fedColor=fedDays<0?'#A32D2D':fedDays<=7?'#E24B4A':fedDays<=14?'#EF9F27':'#F59E0B';
-      if(fedX>=rsx&&fedX<=rex){
-        // Event is within on-road bar — show amber marker line + E label
-        html+=`<div style="position:absolute;top:10px;bottom:10px;width:3px;left:${fedX}px;background:${fedColor};border-radius:2px;z-index:6;pointer-events:none"></div>`;
-        html+=`<div style="position:absolute;top:1px;left:${fedX}px;transform:translateX(-50%);font-size:8px;font-weight:700;color:${fedColor};pointer-events:none;z-index:7;white-space:nowrap">E</div>`;
-      } else if(fedX<rsx){
-        // Event is before campaign start — show on recruitment bar if visible
-        if(fedX>=0&&fedX<=totalW){
-          html+=`<div style="position:absolute;top:10px;bottom:10px;width:3px;left:${fedX}px;background:${fedColor};border-radius:2px;z-index:6;pointer-events:none"></div>`;
-          html+=`<div style="position:absolute;top:1px;left:${fedX}px;transform:translateX(-50%);font-size:8px;font-weight:700;color:${fedColor};pointer-events:none;z-index:7;white-space:nowrap">E</div>`;
-        }
+      if(fedX>=0&&fedX<=totalW){
+        html+=`<div style="position:absolute;top:8px;bottom:8px;width:3px;left:${fedX}px;background:${fedColor};border-radius:2px;z-index:6;pointer-events:none"></div>`;
+        html+=`<div class="start-label" style="left:${fedX}px;color:${fedColor};font-weight:700">${fmtShortDate(fed)}</div>`;
       }
     }
   } else {
