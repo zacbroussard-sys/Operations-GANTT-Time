@@ -141,7 +141,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="leg-item"><div class="leg-swatch" style="background:#B4B2A9;opacity:.6"></div>Ended (stale status)</div>
         <div class="leg-item"><div class="leg-swatch" style="background:repeating-linear-gradient(-45deg,rgba(80,36,2,.28) 0 2px,transparent 2px 6px),#D3D1C7"></div>Shop buffer (6d)</div>
         <div class="leg-item"><div style="width:3px;height:11px;background:#F59E0B;border-radius:2px;flex-shrink:0;margin-right:2px"></div>First event date · <span style="color:#F59E0B;font-weight:700">⚡</span> = event dictates start</div>
-        <div class="leg-item"><div class="leg-swatch" style="border:1.5px dashed #B4B2A9;background:transparent"></div>No artwork approved</div>
+        <div class="leg-item"><div class="leg-swatch" style="border:2px dashed #F59E0B;background:rgba(245,158,11,.12);opacity:.75"></div>No artwork approved</div>
       </div>
     </div>
     <div class="gantt-wrap" id="ganttWrap"></div>
@@ -450,8 +450,8 @@ function buildTimeline(c,layout){
         <div class="bar-seg" style="width:100%;background:#D3D1C7;color:#555;flex:1"></div>
       </div>`;
     } else {
-      // No art — dashed outline
-      html+=`<div class="bar-pending" style="left:${sx}px;width:${bw}px;border-color:${urgColor}" onmouseenter="showTip(event,'${c.id}')" onmouseleave="hideTip()"></div>`;
+      // No art — faded desaturated with amber dashed border
+      html+=`<div class="bar-pending" style="left:${sx}px;width:${bw}px;border:2px dashed #F59E0B;background:rgba(245,158,11,.12);opacity:.75" onmouseenter="showTip(event,'${c.id}')" onmouseleave="hideTip()"></div>`;
     }
     if(sx>=0&&sx<=totalW)html+=`<div class="start-label" style="left:${sx}px;color:${urgColor}">${fmtShortDate(c.effectiveStart)}</div>`;
     const _d0=liveDaysToStart(c);
@@ -465,8 +465,8 @@ function buildTimeline(c,layout){
     const apN=Math.max(0,Math.min(c.approved,qty-onRN-schN)),unN=Math.max(0,qty-onRN-schN-apN);
     const onRW=Math.round(onRN/qty*bw),schW=Math.round(schN/qty*bw),apW=Math.round(apN/qty*bw),unW=Math.max(0,bw-onRW-schW-apW);
     const seg=(w,bg,color,count)=>w<=0?'':`<div class="bar-seg" style="width:${w}px;background:${bg};color:${color}">${w>=MIN_LABEL&&count>0?count:''}</div>`;
-    // No-art: show dashed outline over the bar
-    const noArtStyle=!hasArt?`outline:1.5px dashed ${urgColor};outline-offset:-1px;`:'';
+    // No-art: faded desaturated with amber dashed border
+    const noArtStyle=!hasArt?`border:2px dashed #F59E0B;outline:none;opacity:.65;filter:saturate(0.3);`:'';
     html+=`<div class="bar-preroad" style="left:${bsx}px;width:${bw}px;${noArtStyle}" onmouseenter="showTip(event,'${c.id}')" onmouseleave="hideTip()">
       ${seg(onRW,'#0D7A5A','#EAFFF8',onRN)}${seg(schW,'#4A90D9','#fff',schN)}${seg(apW,'#7B6FCC','#fff',apN)}
       ${unW>0?`<div class="bar-seg" style="width:${unW}px;background:#B8B5AC;color:#fff;flex:1">${unW>=MIN_LABEL&&unN>0?unN:''}</div>`:''}
@@ -502,7 +502,7 @@ function buildTimeline(c,layout){
 
   const missing=hasMissingCars(c);
   const rsx=X(c.effectiveStart),rex=X(c.effectiveEnd),barW=Math.max(4,rex-rsx);
-  const noArtOnRoad=!hasArt&&!ended?'outline:1.5px dashed rgba(255,255,255,.6);outline-offset:-1px;':'';
+  const noArtOnRoad=!hasArt&&!ended?'border:2px dashed #F59E0B;opacity:.55;filter:saturate(0.25);':'';  
   html+=`<div class="bar-onroad ${ended?'ended':''} ${missing&&!ended?'missing-cars':''}" style="left:${rsx}px;width:${barW}px;${noArtOnRoad}"
     onmouseenter="showTip(event,'${c.id}')" onmouseleave="hideTip()"></div>`;
   // Start date label — check if event date is dictating the deadline
