@@ -456,6 +456,17 @@ function buildTimeline(c,layout){
     if(sx>=0&&sx<=totalW)html+=`<div class="start-label" style="left:${sx}px;color:${urgColor}">${fmtShortDate(c.effectiveStart)}</div>`;
     const _d0=liveDaysToStart(c);
     if(_d0>0&&bw>22)html+=`<div class="days-label" style="left:${sx+4}px;color:${urgColor}">${_d0}d</div>`;
+    // First event marker on Not Started bar
+    if(c.firstEventDate){
+      const fedNS=parseLocalDate(c.firstEventDate);
+      const fedNSx=X(fedNS);
+      const fedNSdays=daysUntil(fedNS);
+      const fedNScolor=fedNSdays<0?'#A32D2D':fedNSdays<=7?'#E24B4A':fedNSdays<=14?'#EF9F27':'#F59E0B';
+      if(fedNSx>=0&&fedNSx<=totalW){
+        html+=`<div style="position:absolute;top:10px;bottom:4px;width:3px;left:${fedNSx}px;background:${fedNScolor};border-radius:2px;z-index:6;pointer-events:none"></div>`;
+        html+=`<div class="start-label" style="left:${fedNSx}px;color:${fedNScolor};font-weight:700">${fmtShortDate(fedNS)}</div>`;
+      }
+    }
     return html;
   }
 
