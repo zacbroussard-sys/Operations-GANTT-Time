@@ -123,6 +123,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="toolbar">
         <div><label>Status</label><select id="filterStatus"><option value="">All</option></select></div>
         <div><label>Search</label><input id="search" type="text" placeholder="Name or ID…" style="width:160px"></div>
+        <div><label><input type="checkbox" id="filterNoArt"> No artwork only</label></div>
         <button class="refresh-btn" id="refreshBtn">↻ Refresh</button>
         <span style="font-size:11px;color:#E24B4A;font-weight:600" id="todayLabel"></span>
         <span style="font-size:10px;color:#aaa" id="lastUpdated"></span>
@@ -349,7 +350,7 @@ function attentionReasons(c){
   const pp=c.carQty>0?pipe/c.carQty:0;
   const reasons=[];
   if(d<0) reasons.push({tag:'overdue',label:`Start was ${Math.abs(d)}d ago — not yet on road`,color:'#A32D2D'});
-  if(!c.artworkApproved&&d<=30) reasons.push({tag:'no art',label:`No artwork approved — starts in ${Math.max(0,d)}d`,color:'#7A4F00'});
+  if(!c.artworkApproved&&d<=37) reasons.push({tag:'no art',label:`No artwork approved — starts in ${Math.max(0,d)}d`,color:'#7A4F00'});
   if(d<=21&&pipe===0&&c.onRoad===0) reasons.push({tag:'critical',label:`0 drivers recruited — starts in ${Math.max(0,d)}d`,color:'#7A4F00'});
   else if(d<=14&&pp<0.5&&c.onRoad===0) reasons.push({tag:'behind',label:`Only ${Math.round(pp*100)}% pipeline filled — ${d}d to start`,color:'#A32D2D'});
   return reasons;
@@ -661,11 +662,13 @@ function render(){
 
   const filterStatus=document.getElementById("filterStatus").value;
   const search=document.getElementById("search").value.toLowerCase();
+  const filterNoArt=document.getElementById("filterNoArt").checked;
   const layout=getLayout();
 
   let data=RAW.filter(c=>c.status&&c.status!=="nan"&&c.effectiveStart&&c.effectiveEnd);
   if(filterStatus)data=data.filter(c=>c.status===filterStatus);
   if(search)data=data.filter(c=>c.name.toLowerCase().includes(search)||String(c.id).includes(search));
+  if(filterNoArt)data=data.filter(c=>!c.artworkApproved);
 
   const attention=data.filter(c=>needsAttention(c)).sort((a,b)=>liveDaysToStart(a)-(liveDaysToStart(b)||0));
   const attIds=new Set(attention.map(c=>c.id));
@@ -937,7 +940,7 @@ document.getElementById("refreshBtn").addEventListener("click",()=>loadData());
 
 const sel=document.getElementById("filterStatus");
 STATUS_ORDER.forEach(s=>{const o=document.createElement("option");o.value=s;o.textContent=s;sel.appendChild(o);});
-["filterStatus","search"].forEach(id=>{
+["filterStatus","search","filterNoArt"].forEach(id=>{
   document.getElementById(id).addEventListener(id==="search"?"input":"change",render);
 });
 
