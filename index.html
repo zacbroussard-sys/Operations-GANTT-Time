@@ -34,7 +34,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .warn-badge{font-size:9px;padding:1px 4px;border-radius:3px;background:#FFF3CD;color:#7A4F00;font-weight:500}
 .row{display:grid;border-bottom:0.5px solid #ebebea;align-items:center;min-height:38px;background:#fff}
 .row:hover{background:#f8f8f7}
-.row.pastdue-row{background:#F5E6E6;box-shadow:inset 3px 0 0 #7B1D1D}
+.row.pastdue-row{background:#FDF0E6;box-shadow:inset 3px 0 0 #7C4A1E}
 .row.overdue-row{background:#FDECEA;box-shadow:inset 3px 0 0 #E24B4A}
 .row.attention-row{background:#FEF3C7;box-shadow:inset 3px 0 0 #F59E0B}
 .row.deinst-overdue-row{background:#FDECEA;box-shadow:inset 3px 0 0 #A32D2D}
@@ -131,21 +131,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
       <div class="stats-grid" id="summaryBar"></div>
       <div class="legend">
-        <div class="leg-item"><div class="leg-swatch" style="background:#0D7A5A"></div>On road (recr.)</div>
+        <div class="leg-item" style="font-weight:700;color:#999;font-size:10px;text-transform:uppercase;letter-spacing:.05em;margin-right:4px">Pipeline</div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#0D7A5A"></div>On road</div>
         <div class="leg-item"><div class="leg-swatch" style="background:#4A90D9"></div>Scheduled</div>
         <div class="leg-item"><div class="leg-swatch" style="background:#7B6FCC"></div>Approved</div>
         <div class="leg-item"><div class="leg-swatch" style="background:#B8B5AC"></div>Unfilled</div>
-        <div class="leg-item"><div class="leg-swatch" style="background:#1D9E75;position:relative;overflow:hidden"><div style="position:absolute;left:4px;top:0;bottom:0;width:1.5px;background:rgba(255,255,255,.65)"></div></div>On road + monthly ticks</div>
-        <div class="leg-item"><div style="width:10px;height:10px;background:#6B63D4;transform:rotate(45deg);border-radius:1px;flex-shrink:0"></div>POI (diamond)</div>
-        <div class="leg-item"><div style="width:11px;height:11px;background:#0C447C;border-radius:50%;flex-shrink:0"></div>CLA (circle)</div>
-        <div class="leg-item"><div style="width:10px;height:10px;background:#712B13;border-radius:2px;flex-shrink:0"></div>CRA (square)</div>
-        <div class="leg-item"><div class="leg-swatch" style="background:#1D9E75;outline:2px solid #E24B4A;outline-offset:-1px"></div>Cars missing</div>
-        <div class="leg-item"><div class="leg-swatch" style="background:#B4B2A9;opacity:.6"></div>Ended (stale status)</div>
-        <div class="leg-item"><div style="width:3px;height:11px;background:#F59E0B;border-radius:2px;flex-shrink:0;margin-right:2px"></div>First event · <span style="color:#F59E0B;font-weight:700">⚡</span> = dictates start</div>
-        <div class="leg-item"><div class="leg-swatch" style="border:2px dashed #F59E0B;background:rgba(245,158,11,.12);opacity:.75"></div>No artwork approved</div>
-        <div class="leg-item"><div class="leg-swatch" style="background:#F5E6E6;box-shadow:inset 3px 0 0 #7B1D1D"></div>Past due</div>
-        <div class="leg-item"><div class="leg-swatch" style="background:#FDECEA;box-shadow:inset 3px 0 0 #E24B4A"></div>Critical (urgent)</div>
-        <div class="leg-item"><div class="leg-swatch" style="background:#FEF3C7;box-shadow:inset 3px 0 0 #F59E0B"></div>Warning (watch)</div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#1D9E75"></div>On road bar</div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#1D9E75;outline:2px solid #E24B4A;outline-offset:-1px"></div>Missing cars</div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#B4B2A9;opacity:.6"></div>Stale status</div>
+        <div class="leg-item"><div class="leg-swatch" style="border:2px dashed #F59E0B;background:rgba(245,158,11,.12);opacity:.75"></div>No artwork</div>
+        <div class="leg-item" style="font-weight:700;color:#999;font-size:10px;text-transform:uppercase;letter-spacing:.05em;margin-right:4px;margin-left:10px">Reporting</div>
+        <div class="leg-item"><div style="width:10px;height:10px;background:#6B63D4;transform:rotate(45deg);border-radius:1px;flex-shrink:0"></div>POI</div>
+        <div class="leg-item"><div style="width:11px;height:11px;background:#0C447C;border-radius:50%;flex-shrink:0"></div>CLA</div>
+        <div class="leg-item"><div style="width:10px;height:10px;background:#712B13;border-radius:2px;flex-shrink:0"></div>CRA</div>
+        <div class="leg-item"><div style="width:3px;height:11px;background:#F59E0B;border-radius:2px;flex-shrink:0"></div>Event · <span style="color:#F59E0B;font-weight:700">⚡</span> dictates start</div>
+        <div class="leg-item" style="font-weight:700;color:#999;font-size:10px;text-transform:uppercase;letter-spacing:.05em;margin-right:4px;margin-left:10px">Alerts</div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#FDF0E6;box-shadow:inset 3px 0 0 #7C4A1E"></div>Past due</div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#FDECEA;box-shadow:inset 3px 0 0 #E24B4A"></div>Critical</div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#FEF3C7;box-shadow:inset 3px 0 0 #F59E0B"></div>Warning</div>
       </div>
     </div>
     <div class="gantt-wrap" id="ganttWrap"></div>
@@ -354,7 +357,7 @@ function attentionReasons(c){
   const pipe=c.scheduled+c.installedNoPOI;
   const pp=c.carQty>0?pipe/c.carQty:0;
   const reasons=[];
-  if(d<0) reasons.push({tag:'overdue',label:`Start was ${Math.abs(d)}d ago — not yet on road`,color:'#7B1D1D',tier:'pastdue'});
+  if(d<0) reasons.push({tag:'overdue',label:`Start was ${Math.abs(d)}d ago — not yet on road`,color:'#7C4A1E',tier:'pastdue'});
   if(!c.artworkApproved&&d<=37) reasons.push({tag:'no art',label:`No artwork approved — starts in ${Math.max(0,d)}d`,color:'#7A4F00',tier:'warning'});
   if(d<=21&&pipe===0&&c.onRoad===0) reasons.push({tag:'critical',label:`0 drivers recruited — starts in ${Math.max(0,d)}d`,color:'#A32D2D',tier:'critical'});
   else if(d<=14&&pp<0.5&&c.onRoad===0) reasons.push({tag:'behind',label:`Only ${Math.round(pp*100)}% pipeline filled — ${d}d to start`,color:'#A32D2D',tier:'critical'});
@@ -708,7 +711,7 @@ function render(){
       const cnt=data.filter(c=>c.status===s).length,col=STATUS_COLORS[s];
       return chip(cnt,s.replace('Interviewing/Scheduling','Int/Sched'),col.bg+'33',col.bg,col.text);
     }).join('')+
-    (pastDueCount>0?chip(pastDueCount,'past due','#F5E6E6','#7B1D1D','#7B1D1D'):'')+
+    (pastDueCount>0?chip(pastDueCount,'past due','#FDF0E6','#7C4A1E','#7C4A1E'):'')+
     (criticalCount>0?chip(criticalCount,'critical','#FCEBEB','#A32D2D','#A32D2D'):'')+
     (warningCount>0?chip(warningCount,'warnings','#FAEEDA','#FAC775','#633806'):'')+
     chip(overdueCount,'overdue','#FCEBEB','#F7C1C1','#A32D2D')+
