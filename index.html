@@ -585,6 +585,7 @@ function buildRow(c,layout,isAttn=false){
   const hasWarning=reasons.length>0&&!hasCritical;
   const rowClass=ended?'ended-row':deinstOD?'deinst-overdue-row':(od||hasCritical)?'overdue-row':hasWarning?'attention-row':'';
   const nameClass=ended?'ended':(od||hasCritical)?'overdue':hasWarning?'attention':'';
+  const eventFull=c.eventCarQty>0&&c.eventCarScheduled>=c.eventCarQty;
   const badges=[
     od&&!ended?`<span class="alert-badge" style="margin-left:3px">!</span>`:'',
     missing?`<span class="alert-badge" style="margin-left:3px">cars missing</span>`:'',
@@ -592,6 +593,7 @@ function buildRow(c,layout,isAttn=false){
     deinstOD?`<span class="alert-badge" style="margin-left:3px">deinst overdue</span>`:'',
     dp&&!deinstOD?`<span class="warn-badge" style="margin-left:3px">remove ${c.onRoad}</span>`:'',
     deinstDone?`<span style="margin-left:3px;font-size:9px;color:#085041;font-weight:500">✓ cleared</span>`:'',
+    eventFull?`<span style="margin-left:3px;font-size:9px;color:#0C447C;font-weight:600;padding:1px 4px;border-radius:3px;background:#EBF4FF;border:0.5px solid #85B7EB">✓ event full</span>`:'',
     ...reasons.map(r=>`<span style="margin-left:3px;font-size:9px;padding:1px 4px;border-radius:3px;background:${r.color}22;color:${r.color};font-weight:600;border:0.5px solid ${r.color}55">${r.tag}</span>`),
   ].join('');
   return`<div class="row ${rowClass}" style="grid-template-columns:${NAME_W}px ${PROG_W}px 1fr" onmouseenter="showTip(event,'${c.id}')" onmouseleave="hideTip()">
@@ -840,13 +842,9 @@ function showTip(e,id){
       </div>
       ${c.eventCarQty>0?`
       <div class="t-row">
-        <span>Cars requested</span>
-        <span class="t-val">${c.eventCarQty}</span>
-      </div>
-      <div class="t-row">
-        <span>Cars scheduled</span>
+        <span>Event cars</span>
         <span class="t-val" style="color:${c.eventCarScheduled>=c.eventCarQty?'#1D9E75':c.eventCarScheduled>0?'#EF9F27':'#A32D2D'}">
-          ${c.eventCarScheduled} / ${c.eventCarQty}${c.eventCarScheduled>=c.eventCarQty?' ✓':c.eventCarScheduled>0?' — partially filled':' — none scheduled'}
+          ${c.eventCarScheduled} / ${c.eventCarQty}${c.eventCarScheduled>=c.eventCarQty?' ✓ full':''}
         </span>
       </div>`:''}
       ${fedBeforeStart?`<div style="font-size:10px;color:#A32D2D;margin-top:2px">Event is before campaign start — treat as recruitment deadline</div>`:''}
