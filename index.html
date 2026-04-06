@@ -60,7 +60,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .bar-deinst-window{position:absolute;height:14px;top:12px;cursor:pointer;transition:opacity .15s;border-radius:0 2px 2px 0}
 .bar-deinst-window:hover{opacity:.85}
 .bar-pending{position:absolute;height:14px;top:12px;border-radius:2px;border:1.5px dashed;cursor:pointer}
-.buf-overlay{position:absolute;height:14px;top:12px;border-radius:1px;pointer-events:none;z-index:3;background:repeating-linear-gradient(-45deg,rgba(80,36,2,.28) 0px,rgba(80,36,2,.28) 2px,transparent 2px,transparent 6px)}
 .monthly-tick{position:absolute;top:12px;width:1.5px;height:14px;background:rgba(255,255,255,.65);pointer-events:none;z-index:5}
 /* Report markers — shape per type, always fixed color */
 .report-marker{position:absolute;cursor:pointer;z-index:6;transition:transform .12s}
@@ -142,9 +141,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="leg-item"><div style="width:10px;height:10px;background:#712B13;border-radius:2px;flex-shrink:0"></div>CRA (square)</div>
         <div class="leg-item"><div class="leg-swatch" style="background:#1D9E75;outline:2px solid #E24B4A;outline-offset:-1px"></div>Cars missing</div>
         <div class="leg-item"><div class="leg-swatch" style="background:#B4B2A9;opacity:.6"></div>Ended (stale status)</div>
-        <div class="leg-item"><div class="leg-swatch" style="background:repeating-linear-gradient(-45deg,rgba(80,36,2,.28) 0 2px,transparent 2px 6px),#D3D1C7"></div>Shop buffer (6d)</div>
-        <div class="leg-item"><div style="width:3px;height:11px;background:#F59E0B;border-radius:2px;flex-shrink:0;margin-right:2px"></div>First event date · <span style="color:#F59E0B;font-weight:700">⚡</span> = event dictates start</div>
+        <div class="leg-item"><div style="width:3px;height:11px;background:#F59E0B;border-radius:2px;flex-shrink:0;margin-right:2px"></div>First event · <span style="color:#F59E0B;font-weight:700">⚡</span> = dictates start</div>
         <div class="leg-item"><div class="leg-swatch" style="border:2px dashed #F59E0B;background:rgba(245,158,11,.12);opacity:.75"></div>No artwork approved</div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#F5E6E6;box-shadow:inset 3px 0 0 #7B1D1D"></div>Past due</div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#FDECEA;box-shadow:inset 3px 0 0 #E24B4A"></div>Critical (urgent)</div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#FEF3C7;box-shadow:inset 3px 0 0 #F59E0B"></div>Warning (watch)</div>
       </div>
     </div>
     <div class="gantt-wrap" id="ganttWrap"></div>
@@ -487,8 +488,7 @@ function buildTimeline(c,layout){
       ${seg(onRW,'#0D7A5A','#EAFFF8',onRN)}${seg(schW,'#4A90D9','#fff',schN)}${seg(apW,'#7B6FCC','#fff',apN)}
       ${unW>0?`<div class="bar-seg" style="width:${unW}px;background:#B8B5AC;color:#fff;flex:1">${unW>=MIN_LABEL&&unN>0?unN:''}</div>`:''}
     </div>`;
-    const bufSX=X(addDays(c.effectiveStart,-SHOP_BUFFER)),bufW=Math.max(0,bex-bufSX);
-    if(bufW>0&&!ended)html+=`<div class="buf-overlay" style="left:${bufSX}px;width:${bufW}px"></div>`;
+
     // Start label — flag with ⚡ if event date is dictating the deadline
     const fedPre=c.firstEventDate?parseLocalDate(c.firstEventDate):null;
     const fedBeforePre=fedPre&&fedPre<parseLocalDate(c.effectiveStart);
