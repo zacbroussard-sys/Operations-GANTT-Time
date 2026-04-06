@@ -266,6 +266,8 @@ async function loadData() {
           approved: parseInt(r.approved) || 0,
           installedNoPOI: parseInt(r.installedNoPOI) || 0,
           daysToStart: null, // always recalculated live in render()
+          eventCarQty: parseInt(r.eventCarQty)||0,
+          eventCarScheduled: parseInt(r.eventCarScheduled)||0,
         };
       });
 
@@ -836,6 +838,17 @@ function showTip(e,id){
         <span>${fedBeforeStart?'⚡ Hard deadline (before start)':'Event date (on road)'}</span>
         <span class="t-val" style="color:${fedColor}">${fmtDate(fed)}${fedSuffix}</span>
       </div>
+      ${c.eventCarQty>0?`
+      <div class="t-row">
+        <span>Cars requested</span>
+        <span class="t-val">${c.eventCarQty}</span>
+      </div>
+      <div class="t-row">
+        <span>Cars scheduled</span>
+        <span class="t-val" style="color:${c.eventCarScheduled>=c.eventCarQty?'#1D9E75':c.eventCarScheduled>0?'#EF9F27':'#A32D2D'}">
+          ${c.eventCarScheduled} / ${c.eventCarQty}${c.eventCarScheduled>=c.eventCarQty?' ✓':c.eventCarScheduled>0?' — partially filled':' — none scheduled'}
+        </span>
+      </div>`:''}
       ${fedBeforeStart?`<div style="font-size:10px;color:#A32D2D;margin-top:2px">Event is before campaign start — treat as recruitment deadline</div>`:''}
       `:''}
 
