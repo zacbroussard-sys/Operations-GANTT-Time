@@ -162,7 +162,7 @@ const CORS_PROXIES = [
 // ── Constants ─────────────────────────────────────────────────────────────────
 const ON_ROAD_SET = new Set(["On Road","Deinstalling"]);
 const SHOP_BUFFER=6, DEINST_WINDOW=28, FAR_FUTURE_DAYS=180;
-const MIN_LABEL=10, NAME_W=180, PROG_W=148;
+const MIN_LABEL=10, NAME_W=180, ICON_W=28, PROG_W=148;
 const NEAR_PX=16, FAR_PX=5;
 let RAW = [];
 
@@ -585,7 +585,6 @@ function buildRow(c,layout,isAttn=false){
   const hasWarning=reasons.length>0&&!hasCritical;
   const rowClass=ended?'ended-row':deinstOD?'deinst-overdue-row':(od||hasCritical)?'overdue-row':hasWarning?'attention-row':'';
   const nameClass=ended?'ended':(od||hasCritical)?'overdue':hasWarning?'attention':'';
-  const eventFull=c.eventCarQty>0&&c.eventCarScheduled>=c.eventCarQty;
   const badges=[
     od&&!ended?`<span class="alert-badge" style="margin-left:3px">!</span>`:'',
     missing?`<span class="alert-badge" style="margin-left:3px">cars missing</span>`:'',
@@ -593,11 +592,14 @@ function buildRow(c,layout,isAttn=false){
     deinstOD?`<span class="alert-badge" style="margin-left:3px">deinst overdue</span>`:'',
     dp&&!deinstOD?`<span class="warn-badge" style="margin-left:3px">remove ${c.onRoad}</span>`:'',
     deinstDone?`<span style="margin-left:3px;font-size:9px;color:#085041;font-weight:500">✓ cleared</span>`:'',
-    eventFull?`<span style="margin-left:4px;font-size:9px;color:#fff;font-weight:700;padding:2px 6px;border-radius:4px;background:#0C447C">✓ event full</span>`:'',
     ...reasons.map(r=>`<span style="margin-left:3px;font-size:9px;padding:1px 4px;border-radius:3px;background:${r.color}22;color:${r.color};font-weight:600;border:0.5px solid ${r.color}55">${r.tag}</span>`),
   ].join('');
-  return`<div class="row ${rowClass}" style="grid-template-columns:${NAME_W}px ${PROG_W}px 1fr" onmouseenter="showTip(event,'${c.id}')" onmouseleave="hideTip()">
+  const iconCell=`<div style="display:flex;align-items:center;justify-content:center;height:100%">${
+    eventFull?`<span title="Event fully staffed" style="font-size:10px;color:#fff;font-weight:700;padding:2px 4px;border-radius:4px;background:#0C447C;white-space:nowrap">✓</span>`:''
+  }</div>`;
+  return`<div class="row ${rowClass}" style="grid-template-columns:${NAME_W}px ${ICON_W}px ${PROG_W}px 1fr" onmouseenter="showTip(event,'${c.id}')" onmouseleave="hideTip()">
     <div class="row-left"><div class="row-name ${nameClass}" title="${c.name}">${c.name}${badges}</div></div>
+    ${iconCell}
     <div style="padding:2px 6px;display:flex;flex-direction:column;gap:2px;justify-content:center">${buildProgressBars(c)}</div>
     <div class="timeline-cell">${buildTimeline(c,layout)}</div>
   </div>`;
@@ -637,8 +639,9 @@ function buildHeader(layout){
   const zbX=dateToX(zoomBoundary,viewStart,zoomBoundary);
   const todayX=dateToX(getToday(),viewStart,zoomBoundary);
 
-  return`<div class="gantt-header" style="grid-template-columns:${NAME_W}px ${PROG_W}px 1fr">
+  return`<div class="gantt-header" style="grid-template-columns:${NAME_W}px ${ICON_W}px ${PROG_W}px 1fr">
     <div style="font-size:12px;font-weight:600;padding:6px 8px;color:#444;border-bottom:0.5px solid #d8d8d4;display:flex;align-items:center">Campaign</div>
+    <div style="font-size:10px;font-weight:600;padding:6px 2px;color:#0C447C;border-bottom:0.5px solid #d8d8d4;display:flex;align-items:center;justify-content:center" title="Event fully staffed">E</div>
     <div style="font-size:12px;font-weight:600;padding:6px 8px;color:#444;border-bottom:0.5px solid #d8d8d4;display:flex;align-items:center">Progress</div>
     <div style="overflow:hidden">
       <div class="month-labels" style="width:${totalW}px">
