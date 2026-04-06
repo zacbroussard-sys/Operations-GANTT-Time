@@ -124,6 +124,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div><label>Status</label><select id="filterStatus"><option value="">All</option></select></div>
         <div><label>Search</label><input id="search" type="text" placeholder="Name or ID…" style="width:160px"></div>
         <div><label><input type="checkbox" id="filterNoArt"> No artwork only</label></div>
+        <div><label><input type="checkbox" id="filterUpcomingEvents"> Events in 45d</label></div>
         <button class="refresh-btn" id="refreshBtn">↻ Refresh</button>
         <span style="font-size:11px;color:#E24B4A;font-weight:600" id="todayLabel"></span>
         <span style="font-size:10px;color:#aaa" id="lastUpdated"></span>
@@ -583,6 +584,7 @@ function buildRow(c,layout,isAttn=false){
   const reasons=attentionReasons(c);
   const hasCritical=reasons.some(r=>r.color==='#A32D2D');
   const hasWarning=reasons.length>0&&!hasCritical;
+  const eventFull=c.eventCarQty>0&&c.eventCarScheduled>=c.eventCarQty;
   const rowClass=ended?'ended-row':deinstOD?'deinst-overdue-row':(od||hasCritical)?'overdue-row':hasWarning?'attention-row':'';
   const nameClass=ended?'ended':(od||hasCritical)?'overdue':hasWarning?'attention':'';
   const badges=[
@@ -670,12 +672,18 @@ function render(){
   const filterStatus=document.getElementById("filterStatus").value;
   const search=document.getElementById("search").value.toLowerCase();
   const filterNoArt=document.getElementById("filterNoArt").checked;
+  const filterUpcomingEvents=document.getElementById("filterUpcomingEvents").checked;
   const layout=getLayout();
 
   let data=RAW.filter(c=>c.status&&c.status!=="nan"&&c.effectiveStart&&c.effectiveEnd);
   if(filterStatus)data=data.filter(c=>c.status===filterStatus);
   if(search)data=data.filter(c=>c.name.toLowerCase().includes(search)||String(c.id).includes(search));
   if(filterNoArt)data=data.filter(c=>!c.artworkApproved);
+  if(filterUpcomingEvents)data=data.filter(c=>{
+    if(!c.firstEventDate)return false;
+    const d=daysUntil(parseLocalDate(c.firstEventDate));
+    return d>=0&&d<=45;
+  });
 
   const attention=data.filter(c=>needsAttention(c)).sort((a,b)=>liveDaysToStart(a)-(liveDaysToStart(b)||0));
   const attIds=new Set(attention.map(c=>c.id));
@@ -954,7 +962,7 @@ document.getElementById("refreshBtn").addEventListener("click",()=>loadData());
 
 const sel=document.getElementById("filterStatus");
 STATUS_ORDER.forEach(s=>{const o=document.createElement("option");o.value=s;o.textContent=s;sel.appendChild(o);});
-["filterStatus","search","filterNoArt"].forEach(id=>{
+["filterStatus","search","filterNoArt","filterUpcomingEvents"].forEach(id=>{
   document.getElementById(id).addEventListener(id==="search"?"input":"change",render);
 });
 
