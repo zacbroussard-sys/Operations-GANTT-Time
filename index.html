@@ -34,21 +34,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .warn-badge{font-size:9px;padding:1px 4px;border-radius:3px;background:#FFF3CD;color:#7A4F00;font-weight:500}
 .row{display:grid;border-bottom:0.5px solid #ebebea;align-items:center;min-height:38px;background:#fff}
 .row:hover{background:#f8f8f7}
-.row.pastdue-row{background:#FDF0E6;box-shadow:inset 3px 0 0 #7C4A1E}
+.row.pastdue-row{background:#FFF3E6;box-shadow:inset 3px 0 0 #B85C00}
 .row.overdue-row{background:#FDECEA;box-shadow:inset 3px 0 0 #E24B4A}
 .row.attention-row{background:#FEF3C7;box-shadow:inset 3px 0 0 #F59E0B}
 .row.deinst-overdue-row{background:#FDECEA;box-shadow:inset 3px 0 0 #A32D2D}
 .row.ended-row{background:#F8F8F7}
-.row-left{padding:2px 8px;display:flex;flex-direction:column;gap:2px;justify-content:center;min-height:38px}
+.row-left{padding:2px 8px;display:flex;flex-direction:column;gap:2px;justify-content:center;min-height:44px}
 .row-name{font-size:11px;color:#1a1a18;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
 .row-name.overdue{color:#A32D2D;font-weight:500}
 .row-name.attention{color:#7A4F00;font-weight:500}
 .row-name.ended{color:#aaa}
-.prog-wrap{display:flex;gap:3px;align-items:center}
-.prog-label{font-size:9px;color:#999;white-space:nowrap;width:52px;flex-shrink:0}
-.prog-track{height:4px;border-radius:2px;background:#ebebea;border:0.5px solid #d8d8d4;flex:1;position:relative;overflow:hidden;min-width:40px;max-width:100px}
-.prog-fill{height:100%;border-radius:2px;position:absolute;left:0;top:0}
-.prog-count{font-size:9px;font-weight:500;min-width:26px;text-align:right;flex-shrink:0}
+.prog-wrap{display:flex;gap:4px;align-items:center}
+.prog-label{font-size:9px;color:#888;white-space:nowrap;width:52px;flex-shrink:0;font-weight:500}
+.prog-track{height:7px;border-radius:3px;background:#ebebea;border:0.5px solid #d8d8d4;flex:1;position:relative;overflow:hidden;min-width:40px;max-width:100px}
+.prog-fill{height:100%;border-radius:3px;position:absolute;left:0;top:0}
+.prog-count{font-size:11px;font-weight:700;min-width:30px;text-align:right;flex-shrink:0}
 .timeline-cell{position:relative;height:38px;overflow:hidden}
 .bar-preroad{position:absolute;height:14px;top:12px;border-radius:2px;overflow:hidden;cursor:pointer;display:flex;transition:opacity .15s}
 .bar-preroad:hover{opacity:.8}
@@ -146,7 +146,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="leg-item"><div style="width:10px;height:10px;background:#712B13;border-radius:2px;flex-shrink:0"></div>CRA</div>
         <div class="leg-item"><div style="width:3px;height:11px;background:#F59E0B;border-radius:2px;flex-shrink:0"></div>Event · <span style="color:#F59E0B;font-weight:700">⚡</span> dictates start</div>
         <div class="leg-item" style="font-weight:700;color:#999;font-size:10px;text-transform:uppercase;letter-spacing:.05em;margin-right:4px;margin-left:10px">Alerts</div>
-        <div class="leg-item"><div class="leg-swatch" style="background:#FDF0E6;box-shadow:inset 3px 0 0 #7C4A1E"></div>Past due</div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#FFF3E6;box-shadow:inset 3px 0 0 #B85C00"></div>Past due</div>
         <div class="leg-item"><div class="leg-swatch" style="background:#FDECEA;box-shadow:inset 3px 0 0 #E24B4A"></div>Critical</div>
         <div class="leg-item"><div class="leg-swatch" style="background:#FEF3C7;box-shadow:inset 3px 0 0 #F59E0B"></div>Warning</div>
       </div>
@@ -168,7 +168,7 @@ const CORS_PROXIES = [
 // ── Constants ─────────────────────────────────────────────────────────────────
 const ON_ROAD_SET = new Set(["On Road","Deinstalling"]);
 const SHOP_BUFFER=6, DEINST_WINDOW=28, FAR_FUTURE_DAYS=180;
-const MIN_LABEL=10, NAME_W=180, ICON_W=28, PROG_W=148;
+const MIN_LABEL=10, NAME_W=180, ICON_W=28, PROG_W=158;
 const NEAR_PX=16, FAR_PX=5;
 let RAW = [];
 
@@ -357,7 +357,7 @@ function attentionReasons(c){
   const pipe=c.scheduled+c.installedNoPOI;
   const pp=c.carQty>0?pipe/c.carQty:0;
   const reasons=[];
-  if(d<0) reasons.push({tag:'overdue',label:`Start was ${Math.abs(d)}d ago — not yet on road`,color:'#7C4A1E',tier:'pastdue'});
+  if(d<0) reasons.push({tag:'overdue',label:`Start was ${Math.abs(d)}d ago — not yet on road`,color:'#B85C00',tier:'pastdue'});
   if(!c.artworkApproved&&d<=37) reasons.push({tag:'no art',label:`No artwork approved — starts in ${Math.max(0,d)}d`,color:'#7A4F00',tier:'warning'});
   if(d<=21&&pipe===0&&c.onRoad===0) reasons.push({tag:'critical',label:`0 drivers recruited — starts in ${Math.max(0,d)}d`,color:'#A32D2D',tier:'critical'});
   else if(d<=14&&pp<0.5&&c.onRoad===0) reasons.push({tag:'behind',label:`Only ${Math.round(pp*100)}% pipeline filled — ${d}d to start`,color:'#A32D2D',tier:'critical'});
@@ -711,7 +711,7 @@ function render(){
       const cnt=data.filter(c=>c.status===s).length,col=STATUS_COLORS[s];
       return chip(cnt,s.replace('Interviewing/Scheduling','Int/Sched'),col.bg+'33',col.bg,col.text);
     }).join('')+
-    (pastDueCount>0?chip(pastDueCount,'past due','#FDF0E6','#7C4A1E','#7C4A1E'):'')+
+    (pastDueCount>0?chip(pastDueCount,'past due','#FFF3E6','#B85C00','#B85C00'):'')+
     (criticalCount>0?chip(criticalCount,'critical','#FCEBEB','#A32D2D','#A32D2D'):'')+
     (warningCount>0?chip(warningCount,'warnings','#FAEEDA','#FAC775','#633806'):'')+
     chip(overdueCount,'overdue','#FCEBEB','#F7C1C1','#A32D2D')+
