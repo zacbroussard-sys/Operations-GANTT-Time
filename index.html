@@ -821,6 +821,7 @@ function render(){
 
   if(data.length===0)html+=`<div class="empty">No campaigns match your filters.</div>`;
   document.getElementById("ganttWrap").innerHTML=html;
+  setTimeout(injectNoteIndicators, 50);
 }
 
 // ── Tooltips ──────────────────────────────────────────────────────────────────
@@ -1258,13 +1259,6 @@ function injectNoteIndicators() {
       if (btn) btn.remove();
     });
   });
-}
-
-// Hook into render to inject indicators after DOM update
-const _origRender = render;
-function render() {
-  _origRender();
-  setTimeout(injectNoteIndicators, 50);
 }
 
 // Init dot on load
