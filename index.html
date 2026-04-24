@@ -347,6 +347,7 @@ async function loadData() {
           barStart: toISO(parseDate(r.barStart)),
           artworkApproved: (r.artworkApproved||'').toString().toLowerCase()==='true',
           firstEventDate: toISO(parseDate(r.firstEventDate)),
+          firstInstallDate: toISO(parseDate(r.firstInstallDate)),
           carQty: parseInt(r.carQty) || 0,
           onRoad: parseInt(r.onRoad) || 0,
           offRoad: parseInt(r.offRoad) || 0,
@@ -937,6 +938,7 @@ function showTip(e,id){
       <div class="t-grid">
         <div class="t-row"><span>Start</span><span class="t-val">${fmtDate(parseLocalDate(c.effectiveStart))}</span></div>
         <div class="t-row"><span>End</span><span class="t-val">${fmtDate(parseLocalDate(c.effectiveEnd))}</span></div>
+        ${c.firstInstallDate?`<div class="t-row"><span>First install</span><span class="t-val">${fmtDate(parseLocalDate(c.firstInstallDate))}</span></div>`:''}
         ${!ON_ROAD_SET.has(c.status)?`<div class="t-row"><span>Recruitment</span><span class="t-val" style="color:${od?'#A32D2D':liveD<=14?'#E24B4A':'inherit'}">${dLabel}</span></div>`:''}
         ${daysOnRoad!=null?`<div class="t-row"><span>On road</span><span class="t-val">${daysOnRoad}d (${pctElapsed}% elapsed)</span></div>`:''}
         ${daysLeft!=null&&ON_ROAD_SET.has(c.status)&&!ended?`<div class="t-row"><span>Days remaining</span><span class="t-val" style="color:${daysLeft<=30?'#E24B4A':daysLeft<=60?'#EF9F27':'inherit'}">${daysLeft}d left</span></div>`:''}
