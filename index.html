@@ -99,6 +99,37 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .attention-header{background:#1E4D7B;padding:7px 12px;font-size:12px;font-weight:600;color:#fff;display:flex;align-items:center;gap:6px}
 .refresh-btn{margin-left:auto;font-size:10px;background:#fff;border:0.5px solid #d0d0cc;border-radius:4px;padding:2px 8px;cursor:pointer;color:#666}
 .refresh-btn:hover{background:#f0f0ee}
+
+/* ── Notes panel ──────────────────────────────────────────────────────────── */
+#notesBtn{position:fixed;bottom:20px;right:20px;z-index:200;width:44px;height:44px;border-radius:50%;background:#1D9E75;border:none;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;font-size:20px;transition:transform .15s,box-shadow .15s;color:#fff}
+#notesBtn:hover{transform:scale(1.08);box-shadow:0 5px 18px rgba(0,0,0,.28)}
+#notesBtn .notes-dot{position:absolute;top:4px;right:4px;width:9px;height:9px;border-radius:50%;background:#F59E0B;border:2px solid #fff;display:none}
+#notesPanel{position:fixed;right:0;top:0;bottom:0;width:340px;background:#fff;border-left:0.5px solid #d8d8d4;box-shadow:-4px 0 24px rgba(0,0,0,.1);z-index:199;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s cubic-bezier(.4,0,.2,1)}
+#notesPanel.open{transform:translateX(0)}
+.notes-panel-header{padding:14px 16px 10px;border-bottom:0.5px solid #ebebea;display:flex;align-items:center;gap:8px;background:#f8f8f7;flex-shrink:0}
+.notes-panel-title{font-weight:700;font-size:14px;color:#1a1a18;flex:1}
+.notes-close{cursor:pointer;font-size:20px;color:#aaa;line-height:1;padding:2px 4px;border-radius:4px}
+.notes-close:hover{background:#ebebea;color:#666}
+.notes-search{padding:8px 12px;border-bottom:0.5px solid #ebebea;flex-shrink:0}
+.notes-search input{width:100%;font-size:12px;padding:5px 9px;border:0.5px solid #d0d0cc;border-radius:6px;background:#fff;color:#1a1a18;outline:none}
+.notes-search input:focus{border-color:#1D9E75}
+.notes-list{flex:1;overflow-y:auto;padding:8px}
+.note-card{border:0.5px solid #ebebea;border-radius:8px;margin-bottom:6px;overflow:hidden;background:#fff;transition:box-shadow .12s}
+.note-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.note-card-header{display:flex;align-items:center;gap:6px;padding:7px 10px;cursor:pointer;background:#f8f8f7;border-bottom:0.5px solid #ebebea}
+.note-card-name{font-size:11px;font-weight:600;color:#1a1a18;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.note-card-meta{font-size:9px;color:#aaa;white-space:nowrap}
+.note-card-dot{width:7px;height:7px;border-radius:50%;background:#1D9E75;flex-shrink:0}
+.note-card-body{padding:8px 10px}
+.note-textarea{width:100%;font-size:12px;font-family:inherit;color:#1a1a18;border:none;outline:none;resize:none;background:transparent;line-height:1.5;min-height:60px}
+.note-card-footer{display:flex;justify-content:flex-end;padding:4px 8px 6px;gap:6px}
+.note-delete{font-size:10px;color:#E24B4A;cursor:pointer;padding:2px 6px;border-radius:4px;border:0.5px solid #F7C1C1;background:#FCEBEB}
+.note-delete:hover{background:#f7c1c1}
+.note-chip{position:absolute;top:8px;left:8px;width:8px;height:8px;border-radius:50%;background:#F59E0B;pointer-events:none;z-index:5}
+.notes-empty{text-align:center;padding:28px 16px;color:#aaa;font-size:12px}
+.notes-all-btn{padding:6px 12px;border-bottom:0.5px solid #ebebea;flex-shrink:0}
+.notes-all-btn button{width:100%;font-size:11px;background:#f4f4f2;border:0.5px solid #d8d8d4;border-radius:6px;padding:5px 10px;cursor:pointer;color:#555;text-align:left}
+.notes-all-btn button:hover{background:#ebebea}
 </style>
 </head>
 <body>
@@ -154,6 +185,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="gantt-wrap" id="ganttWrap"></div>
     <div class="tooltip" id="tooltip"></div>
   </div>
+</div>
+
+<!-- ── Notes floating button ── -->
+<button id="notesBtn" onclick="toggleNotesPanel()" title="Campaign Notes">
+  📝
+  <span class="notes-dot" id="notesDot"></span>
+</button>
+
+<!-- ── Notes side panel ── -->
+<div id="notesPanel">
+  <div class="notes-panel-header">
+    <span class="notes-panel-title">📝 Campaign Notes</span>
+    <span style="font-size:10px;color:#aaa" id="notesSavedLabel"></span>
+    <span class="notes-close" onclick="toggleNotesPanel()">×</span>
+  </div>
+  <div class="notes-search">
+    <input type="text" id="notesSearch" placeholder="Search campaigns…" oninput="renderNotesPanel()">
+  </div>
+  <div class="notes-all-btn">
+    <button onclick="addNoteForCampaign(null)">＋ Add a note for any campaign…</button>
+  </div>
+  <div class="notes-list" id="notesList"></div>
 </div>
 
 <script>
@@ -980,6 +1033,242 @@ const _slowTimer=setTimeout(()=>{
   if(el)el.style.display='block';
 },5000);
 loadData().then(()=>clearTimeout(_slowTimer)).catch(()=>clearTimeout(_slowTimer));
+
+// ── Notes system ──────────────────────────────────────────────────────────────
+const NOTES_KEY = 'carvertise_gantt_notes';
+
+function loadNotes() {
+  try { return JSON.parse(localStorage.getItem(NOTES_KEY) || '{}'); }
+  catch(e) { return {}; }
+}
+
+function saveNotes(notes) {
+  try {
+    localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+    updateNotesDot();
+    const lbl = document.getElementById('notesSavedLabel');
+    if (lbl) { lbl.textContent = 'Saved ✓'; setTimeout(()=>{ lbl.textContent=''; }, 1500); }
+  } catch(e) {}
+}
+
+function updateNotesDot() {
+  const notes = loadNotes();
+  const hasAny = Object.values(notes).some(n => n && n.trim().length > 0);
+  const dot = document.getElementById('notesDot');
+  if (dot) dot.style.display = hasAny ? 'block' : 'none';
+}
+
+function toggleNotesPanel() {
+  const panel = document.getElementById('notesPanel');
+  const isOpen = panel.classList.contains('open');
+  if (isOpen) {
+    panel.classList.remove('open');
+  } else {
+    panel.classList.add('open');
+    renderNotesPanel();
+  }
+}
+
+function addNoteForCampaign(id) {
+  // If no id, prompt the user to pick a campaign by typing the name
+  if (!id) {
+    const name = prompt('Enter campaign name or ID to add a note:');
+    if (!name) return;
+    const match = RAW.find(c =>
+      c.name.toLowerCase().includes(name.toLowerCase()) ||
+      String(c.id) === name.trim()
+    );
+    if (!match) { alert('Campaign not found. Try part of the name or the campaign ID.'); return; }
+    id = match.id;
+  }
+  // Open note for this campaign (ensure panel is open)
+  const panel = document.getElementById('notesPanel');
+  if (!panel.classList.contains('open')) panel.classList.add('open');
+  renderNotesPanel(id);
+  // Focus the textarea for this campaign
+  setTimeout(() => {
+    const ta = document.getElementById(`note-ta-${id}`);
+    if (ta) { ta.focus(); ta.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  }, 80);
+}
+
+function renderNotesPanel(highlightId) {
+  const notes = loadNotes();
+  const search = (document.getElementById('notesSearch')?.value || '').toLowerCase();
+  const list = document.getElementById('notesList');
+  if (!list) return;
+
+  // Build a merged list: campaigns with notes first, then search-matching campaigns without notes
+  const hasNoteIds = new Set(Object.keys(notes).filter(k => notes[k]?.trim()));
+
+  // Campaigns that match search
+  let candidates = RAW.filter(c => {
+    if (search) {
+      return c.name.toLowerCase().includes(search) || String(c.id).includes(search);
+    }
+    return hasNoteIds.has(String(c.id));
+  });
+
+  // If no search, show only campaigns with notes
+  if (!search && candidates.length === 0) {
+    list.innerHTML = `<div class="notes-empty">No notes yet.<br><span style="font-size:11px">Hover a campaign and click the 📝 button, or use the search to find a campaign.</span></div>`;
+    updateNotesDot();
+    return;
+  }
+
+  // Sort: has notes first, then alphabetical
+  candidates.sort((a, b) => {
+    const aN = hasNoteIds.has(String(a.id)) ? 0 : 1;
+    const bN = hasNoteIds.has(String(b.id)) ? 0 : 1;
+    if (aN !== bN) return aN - bN;
+    return a.name.localeCompare(b.name);
+  });
+
+  if (candidates.length === 0) {
+    list.innerHTML = `<div class="notes-empty">No campaigns match your search.</div>`;
+    return;
+  }
+
+  list.innerHTML = candidates.map(c => {
+    const note = notes[String(c.id)] || '';
+    const hasNote = note.trim().length > 0;
+    const col = STATUS_COLORS[c.status] || STATUS_COLORS['Not Started'];
+    const isHighlighted = String(c.id) === String(highlightId);
+    const ts = notesTimestamps[String(c.id)] ? `· ${notesTimestamps[String(c.id)]}` : '';
+    return `<div class="note-card" id="note-card-${c.id}" style="${isHighlighted ? 'box-shadow:0 0 0 2px #1D9E75;' : ''}">
+      <div class="note-card-header" onclick="toggleNoteCard('${c.id}')">
+        ${hasNote ? `<div class="note-card-dot" style="background:${col.pill}"></div>` : `<div style="width:7px;height:7px;border-radius:50%;border:1.5px solid #d0d0cc;flex-shrink:0"></div>`}
+        <span class="note-card-name" title="${c.name}">${c.name}</span>
+        <span class="note-card-meta">${c.status} ${ts}</span>
+        <span style="font-size:11px;color:#aaa">${noteCardOpen[String(c.id)] || isHighlighted ? '▲' : '▼'}</span>
+      </div>
+      ${noteCardOpen[String(c.id)] || isHighlighted ? `
+      <div class="note-card-body">
+        <textarea class="note-textarea" id="note-ta-${c.id}" rows="4"
+          placeholder="Add a note for ${c.name}…"
+          oninput="autosaveNote('${c.id}', this.value)"
+        >${escapeHtml(note)}</textarea>
+      </div>
+      ${hasNote ? `<div class="note-card-footer"><button class="note-delete" onclick="deleteNote('${c.id}')">🗑 Clear note</button></div>` : ''}
+      ` : ''}
+    </div>`;
+  }).join('');
+
+  updateNotesDot();
+}
+
+// Track which note cards are open
+const noteCardOpen = {};
+// Track last-saved timestamps per campaign
+const notesTimestamps = {};
+// Debounce timers per campaign
+const noteTimers = {};
+
+function toggleNoteCard(id) {
+  noteCardOpen[String(id)] = !noteCardOpen[String(id)];
+  renderNotesPanel();
+}
+
+function autosaveNote(id, value) {
+  clearTimeout(noteTimers[String(id)]);
+  noteTimers[String(id)] = setTimeout(() => {
+    const notes = loadNotes();
+    notes[String(id)] = value;
+    if (!value.trim()) delete notes[String(id)];
+    saveNotes(notes);
+    const now = new Date();
+    notesTimestamps[String(id)] = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    // Update dot and timestamp without full re-render (avoid losing focus)
+    const meta = document.querySelector(`#note-card-${id} .note-card-meta`);
+    if (meta) meta.textContent = `${RAW.find(c=>String(c.id)===String(id))?.status||''} · ${notesTimestamps[String(id)]}`;
+    updateNotesDot();
+  }, 600);
+}
+
+function deleteNote(id) {
+  if (!confirm('Clear this note?')) return;
+  const notes = loadNotes();
+  delete notes[String(id)];
+  saveNotes(notes);
+  delete notesTimestamps[String(id)];
+  noteCardOpen[String(id)] = false;
+  renderNotesPanel();
+}
+
+function escapeHtml(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Add note button to each row on hover (injected into row-left)
+// We piggyback on the existing row hover — add a small 📝 button via tooltip mechanism
+// Instead, we add a note indicator/button into buildRow
+const _origBuildRow = buildRow;
+
+// Add note icon into the row name area — patch buildRow to show 📝 if note exists
+// We'll override the row html after render to inject note indicators
+function injectNoteIndicators() {
+  const notes = loadNotes();
+  RAW.forEach(c => {
+    const note = notes[String(c.id)];
+    if (!note || !note.trim()) return;
+    // Find all row-name divs for this campaign
+    document.querySelectorAll(`.row`).forEach(row => {
+      const nameEl = row.querySelector('.row-name');
+      if (nameEl && nameEl.title === c.name && !nameEl.querySelector('.note-indicator')) {
+        const indicator = document.createElement('span');
+        indicator.className = 'note-indicator';
+        indicator.title = 'Has note — click to open';
+        indicator.style.cssText = 'margin-left:4px;font-size:10px;cursor:pointer;opacity:.7;vertical-align:middle';
+        indicator.textContent = '📝';
+        indicator.onclick = (e) => { e.stopPropagation(); noteCardOpen[String(c.id)] = true; addNoteForCampaign(c.id); };
+        nameEl.appendChild(indicator);
+      }
+    });
+    // Also add a quick-note button on every row via mouseenter
+  });
+
+  // Add quick-add note button on row hover
+  document.querySelectorAll('.row').forEach(row => {
+    if (row.dataset.noteHooked) return;
+    row.dataset.noteHooked = '1';
+    row.addEventListener('mouseenter', () => {
+      const nameEl = row.querySelector('.row-name');
+      if (!nameEl) return;
+      const name = nameEl.title;
+      const c = RAW.find(r => r.name === name);
+      if (!c) return;
+      if (row.querySelector('.note-hover-btn')) return;
+      const btn = document.createElement('span');
+      btn.className = 'note-hover-btn';
+      btn.title = 'Add / view note';
+      btn.style.cssText = 'margin-left:4px;font-size:10px;cursor:pointer;opacity:.45;vertical-align:middle;transition:opacity .12s';
+      btn.textContent = '📝';
+      btn.onmouseenter = () => { btn.style.opacity = '1'; };
+      btn.onmouseleave = () => { btn.style.opacity = '.45'; };
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        noteCardOpen[String(c.id)] = true;
+        addNoteForCampaign(c.id);
+      };
+      // Only add if no indicator already
+      if (!nameEl.querySelector('.note-indicator')) nameEl.appendChild(btn);
+    });
+    row.addEventListener('mouseleave', () => {
+      const btn = row.querySelector('.note-hover-btn');
+      if (btn) btn.remove();
+    });
+  });
+}
+
+// Hook into render to inject indicators after DOM update
+const _origRender = render;
+function render() {
+  _origRender();
+  setTimeout(injectNoteIndicators, 50);
+}
+
+// Init dot on load
+updateNotesDot();
 </script>
 </body>
 </html>
