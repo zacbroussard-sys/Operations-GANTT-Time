@@ -130,6 +130,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .notes-all-btn{padding:6px 12px;border-bottom:0.5px solid #ebebea;flex-shrink:0}
 .notes-all-btn button{width:100%;font-size:11px;background:#f4f4f2;border:0.5px solid #d8d8d4;border-radius:6px;padding:5px 10px;cursor:pointer;color:#555;text-align:left}
 .notes-all-btn button:hover{background:#ebebea}
+
+/* ── Inline row note button & popover ── */
+.row-note-btn{flex-shrink:0;width:16px;height:16px;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;opacity:0;transition:opacity .12s;position:relative}
+.row-note-btn::before{content:'✏️';font-size:10px}
+.row-note-btn.has-note{opacity:.7!important}
+.row-note-btn.has-note::before{content:'📝'}
+.row:hover .row-note-btn{opacity:.4}
+.row:hover .row-note-btn:hover{opacity:1;background:#f0f0ee}
+.row-note-btn.open{opacity:1!important;background:#e8f5ef}
+
+.inline-note-pop{position:fixed;z-index:150;background:#fff;border:0.5px solid #d0d0cc;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.14);padding:12px 14px;width:260px;display:none}
+.inline-note-pop.visible{display:block}
+.inline-note-pop-name{font-size:11px;font-weight:700;color:#1a1a18;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inline-note-pop textarea{width:100%;font-size:12px;font-family:inherit;border:0.5px solid #d0d0cc;border-radius:6px;padding:6px 8px;resize:none;outline:none;color:#1a1a18;line-height:1.5;background:#fafaf8}
+.inline-note-pop textarea:focus{border-color:#1D9E75}
+.inline-note-pop-footer{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+.inline-note-pop-saved{font-size:10px;color:#1D9E75;opacity:0;transition:opacity .3s}
+.inline-note-pop-del{font-size:10px;color:#E24B4A;cursor:pointer;padding:2px 6px;border-radius:4px;border:0.5px solid #F7C1C1;background:#FCEBEB;display:none}
+.inline-note-pop-del:hover{background:#f7c1c1}
 </style>
 </head>
 <body>
@@ -207,6 +226,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button onclick="addNoteForCampaign(null)">＋ Add a note for any campaign…</button>
   </div>
   <div class="notes-list" id="notesList"></div>
+</div>
+
+<!-- ── Inline note popover ── -->
+<div class="inline-note-pop" id="inlineNotePop">
+  <div class="inline-note-pop-name" id="inlineNotePopName"></div>
+  <textarea id="inlineNoteTa" rows="4" placeholder="Type a note…"></textarea>
+  <div class="inline-note-pop-footer">
+    <button class="inline-note-pop-del" id="inlineNoteDel">🗑 Clear</button>
+    <span class="inline-note-pop-saved" id="inlineNoteSaved">Saved ✓</span>
+  </div>
 </div>
 
 <script>
@@ -657,8 +686,14 @@ function buildRow(c,layout,isAttn=false){
   const iconCell=`<div style="display:flex;align-items:center;justify-content:center;height:100%">${
     eventFull?`<span title="Event fully staffed" style="font-size:10px;color:#fff;font-weight:700;padding:2px 4px;border-radius:4px;background:#0C447C;white-space:nowrap">✓</span>`:''
   }</div>`;
+  const noteIcon=`<span class="row-note-btn" data-id="${c.id}" onclick="toggleInlineNote(event,'${c.id}')" title="Note"></span>`;
   return`<div class="row ${rowClass}" style="grid-template-columns:${NAME_W}px ${ICON_W}px ${PROG_W}px 1fr" onmouseenter="showTip(event,'${c.id}')" onmouseleave="hideTip()">
-    <div class="row-left"><div class="row-name ${nameClass}" title="${c.name}">${c.name}${badges}</div></div>
+    <div class="row-left">
+      <div style="display:flex;align-items:center;gap:3px">
+        <div class="row-name ${nameClass}" title="${c.name}" style="flex:1;min-width:0">${c.name}${badges}</div>
+        ${noteIcon}
+      </div>
+    </div>
     ${iconCell}
     <div style="padding:2px 6px;display:flex;flex-direction:column;gap:2px;justify-content:center">${buildProgressBars(c)}</div>
     <div class="timeline-cell">${buildTimeline(c,layout)}</div>
@@ -1037,6 +1072,8 @@ loadData().then(()=>clearTimeout(_slowTimer)).catch(()=>clearTimeout(_slowTimer)
 
 // ── Notes system ──────────────────────────────────────────────────────────────
 const NOTES_KEY = 'carvertise_gantt_notes';
+let _inlineNoteCurrentId = null;
+let _inlineNoteTimer = null;
 
 function loadNotes() {
   try { return JSON.parse(localStorage.getItem(NOTES_KEY) || '{}'); }
@@ -1044,12 +1081,12 @@ function loadNotes() {
 }
 
 function saveNotes(notes) {
-  try {
-    localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
-    updateNotesDot();
-    const lbl = document.getElementById('notesSavedLabel');
-    if (lbl) { lbl.textContent = 'Saved ✓'; setTimeout(()=>{ lbl.textContent=''; }, 1500); }
-  } catch(e) {}
+  try { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); }
+  catch(e) {}
+}
+
+function escapeHtml(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function updateNotesDot() {
@@ -1057,8 +1094,110 @@ function updateNotesDot() {
   const hasAny = Object.values(notes).some(n => n && n.trim().length > 0);
   const dot = document.getElementById('notesDot');
   if (dot) dot.style.display = hasAny ? 'block' : 'none';
+  // Refresh note button styles for all visible rows
+  document.querySelectorAll('.row-note-btn').forEach(btn => {
+    const id = btn.dataset.id;
+    const note = notes[String(id)];
+    if (note && note.trim()) {
+      btn.classList.add('has-note');
+    } else {
+      btn.classList.remove('has-note');
+    }
+  });
 }
 
+// ── Inline popover ────────────────────────────────────────────────────────────
+function toggleInlineNote(e, id) {
+  e.stopPropagation();
+  const pop = document.getElementById('inlineNotePop');
+  const btn = e.currentTarget;
+
+  // If same campaign already open, close it
+  if (_inlineNoteCurrentId === String(id) && pop.classList.contains('visible')) {
+    closeInlineNote();
+    return;
+  }
+
+  _inlineNoteCurrentId = String(id);
+
+  // Populate
+  const notes = loadNotes();
+  const note = notes[String(id)] || '';
+  const c = RAW.find(r => String(r.id) === String(id));
+  document.getElementById('inlineNotePopName').textContent = c ? c.name : id;
+  const ta = document.getElementById('inlineNoteTa');
+  ta.value = note;
+  const del = document.getElementById('inlineNoteDel');
+  del.style.display = note.trim() ? 'block' : 'none';
+  document.getElementById('inlineNoteSaved').style.opacity = '0';
+
+  // Wire up textarea autosave
+  ta.oninput = () => {
+    clearTimeout(_inlineNoteTimer);
+    _inlineNoteTimer = setTimeout(() => {
+      const notes2 = loadNotes();
+      if (ta.value.trim()) {
+        notes2[String(id)] = ta.value;
+      } else {
+        delete notes2[String(id)];
+      }
+      saveNotes(notes2);
+      updateNotesDot();
+      del.style.display = ta.value.trim() ? 'block' : 'none';
+      const saved = document.getElementById('inlineNoteSaved');
+      saved.style.opacity = '1';
+      setTimeout(() => { saved.style.opacity = '0'; }, 1500);
+    }, 500);
+  };
+
+  // Wire up delete
+  del.onclick = () => {
+    if (!confirm('Clear this note?')) return;
+    const notes2 = loadNotes();
+    delete notes2[String(id)];
+    saveNotes(notes2);
+    ta.value = '';
+    del.style.display = 'none';
+    updateNotesDot();
+  };
+
+  // Position popover near the button
+  pop.classList.add('visible');
+  const rect = btn.getBoundingClientRect();
+  const pw = 260, ph = 160;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  let left = rect.right + 6;
+  let top = rect.top - 4;
+  if (left + pw > vw - 10) left = rect.left - pw - 6;
+  if (top + ph > vh - 10) top = vh - ph - 10;
+  if (top < 10) top = 10;
+  pop.style.left = left + 'px';
+  pop.style.top = top + 'px';
+
+  // Mark button open
+  document.querySelectorAll('.row-note-btn.open').forEach(b => b.classList.remove('open'));
+  btn.classList.add('open');
+
+  setTimeout(() => ta.focus(), 30);
+}
+
+function closeInlineNote() {
+  const pop = document.getElementById('inlineNotePop');
+  pop.classList.remove('visible');
+  document.querySelectorAll('.row-note-btn.open').forEach(b => b.classList.remove('open'));
+  _inlineNoteCurrentId = null;
+}
+
+// Close popover when clicking outside
+document.addEventListener('click', e => {
+  const pop = document.getElementById('inlineNotePop');
+  if (!pop.classList.contains('visible')) return;
+  if (pop.contains(e.target)) return;
+  if (e.target.closest('.row-note-btn')) return;
+  closeInlineNote();
+});
+
+// ── Side panel (overview of all notes) ────────────────────────────────────────
 function toggleNotesPanel() {
   const panel = document.getElementById('notesPanel');
   const isOpen = panel.classList.contains('open');
@@ -1070,198 +1209,71 @@ function toggleNotesPanel() {
   }
 }
 
-function addNoteForCampaign(id) {
-  // If no id, prompt the user to pick a campaign by typing the name
-  if (!id) {
-    const name = prompt('Enter campaign name or ID to add a note:');
-    if (!name) return;
-    const match = RAW.find(c =>
-      c.name.toLowerCase().includes(name.toLowerCase()) ||
-      String(c.id) === name.trim()
-    );
-    if (!match) { alert('Campaign not found. Try part of the name or the campaign ID.'); return; }
-    id = match.id;
-  }
-  // Open note for this campaign (ensure panel is open)
-  const panel = document.getElementById('notesPanel');
-  if (!panel.classList.contains('open')) panel.classList.add('open');
-  renderNotesPanel(id);
-  // Focus the textarea for this campaign
-  setTimeout(() => {
-    const ta = document.getElementById(`note-ta-${id}`);
-    if (ta) { ta.focus(); ta.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-  }, 80);
-}
-
-function renderNotesPanel(highlightId) {
+function renderNotesPanel() {
   const notes = loadNotes();
   const search = (document.getElementById('notesSearch')?.value || '').toLowerCase();
   const list = document.getElementById('notesList');
   if (!list) return;
-
-  // Build a merged list: campaigns with notes first, then search-matching campaigns without notes
   const hasNoteIds = new Set(Object.keys(notes).filter(k => notes[k]?.trim()));
-
-  // Campaigns that match search
   let candidates = RAW.filter(c => {
-    if (search) {
-      return c.name.toLowerCase().includes(search) || String(c.id).includes(search);
-    }
+    if (search) return c.name.toLowerCase().includes(search) || String(c.id).includes(search);
     return hasNoteIds.has(String(c.id));
   });
-
-  // If no search, show only campaigns with notes
   if (!search && candidates.length === 0) {
-    list.innerHTML = `<div class="notes-empty">No notes yet.<br><span style="font-size:11px">Hover a campaign and click the 📝 button, or use the search to find a campaign.</span></div>`;
-    updateNotesDot();
+    list.innerHTML = `<div class="notes-empty">No notes yet.<br><span style="font-size:11px">Click the ✏️ icon on any campaign row to add a note.</span></div>`;
     return;
   }
-
-  // Sort: has notes first, then alphabetical
+  if (candidates.length === 0) {
+    list.innerHTML = `<div class="notes-empty">No campaigns match.</div>`;
+    return;
+  }
   candidates.sort((a, b) => {
     const aN = hasNoteIds.has(String(a.id)) ? 0 : 1;
     const bN = hasNoteIds.has(String(b.id)) ? 0 : 1;
-    if (aN !== bN) return aN - bN;
-    return a.name.localeCompare(b.name);
+    return aN !== bN ? aN - bN : a.name.localeCompare(b.name);
   });
-
-  if (candidates.length === 0) {
-    list.innerHTML = `<div class="notes-empty">No campaigns match your search.</div>`;
-    return;
-  }
-
   list.innerHTML = candidates.map(c => {
     const note = notes[String(c.id)] || '';
     const hasNote = note.trim().length > 0;
-    const col = STATUS_COLORS[c.status] || STATUS_COLORS['Not Started'];
-    const isHighlighted = String(c.id) === String(highlightId);
-    const ts = notesTimestamps[String(c.id)] ? `· ${notesTimestamps[String(c.id)]}` : '';
-    return `<div class="note-card" id="note-card-${c.id}" style="${isHighlighted ? 'box-shadow:0 0 0 2px #1D9E75;' : ''}">
-      <div class="note-card-header" onclick="toggleNoteCard('${c.id}')">
-        ${hasNote ? `<div class="note-card-dot" style="background:${col.pill}"></div>` : `<div style="width:7px;height:7px;border-radius:50%;border:1.5px solid #d0d0cc;flex-shrink:0"></div>`}
+    return `<div class="note-card">
+      <div class="note-card-header" style="cursor:default">
+        <div class="${hasNote ? 'note-card-dot' : ''}" style="${hasNote ? '' : 'width:7px;height:7px;border-radius:50%;border:1.5px solid #d0d0cc;flex-shrink:0'}"></div>
         <span class="note-card-name" title="${c.name}">${c.name}</span>
-        <span class="note-card-meta">${c.status} ${ts}</span>
-        <span style="font-size:11px;color:#aaa">${noteCardOpen[String(c.id)] || isHighlighted ? '▲' : '▼'}</span>
+        <span class="note-card-meta">${c.status}</span>
       </div>
-      ${noteCardOpen[String(c.id)] || isHighlighted ? `
       <div class="note-card-body">
-        <textarea class="note-textarea" id="note-ta-${c.id}" rows="4"
-          placeholder="Add a note for ${c.name}…"
-          oninput="autosaveNote('${c.id}', this.value)"
+        <textarea class="note-textarea" rows="3" placeholder="Add a note…"
+          oninput="panelAutosave('${c.id}',this)"
         >${escapeHtml(note)}</textarea>
       </div>
-      ${hasNote ? `<div class="note-card-footer"><button class="note-delete" onclick="deleteNote('${c.id}')">🗑 Clear note</button></div>` : ''}
-      ` : ''}
+      ${hasNote ? `<div class="note-card-footer"><button class="note-delete" onclick="panelDeleteNote('${c.id}')">🗑 Clear</button></div>` : ''}
     </div>`;
   }).join('');
-
-  updateNotesDot();
 }
 
-// Track which note cards are open
-const noteCardOpen = {};
-// Track last-saved timestamps per campaign
-const notesTimestamps = {};
-// Debounce timers per campaign
-const noteTimers = {};
-
-function toggleNoteCard(id) {
-  noteCardOpen[String(id)] = !noteCardOpen[String(id)];
-  renderNotesPanel();
-}
-
-function autosaveNote(id, value) {
-  clearTimeout(noteTimers[String(id)]);
-  noteTimers[String(id)] = setTimeout(() => {
+function panelAutosave(id, ta) {
+  clearTimeout(_inlineNoteTimer);
+  _inlineNoteTimer = setTimeout(() => {
     const notes = loadNotes();
-    notes[String(id)] = value;
-    if (!value.trim()) delete notes[String(id)];
+    if (ta.value.trim()) notes[String(id)] = ta.value;
+    else delete notes[String(id)];
     saveNotes(notes);
-    const now = new Date();
-    notesTimestamps[String(id)] = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    // Update dot and timestamp without full re-render (avoid losing focus)
-    const meta = document.querySelector(`#note-card-${id} .note-card-meta`);
-    if (meta) meta.textContent = `${RAW.find(c=>String(c.id)===String(id))?.status||''} · ${notesTimestamps[String(id)]}`;
     updateNotesDot();
-  }, 600);
+    const lbl = document.getElementById('notesSavedLabel');
+    if (lbl) { lbl.textContent = 'Saved ✓'; setTimeout(() => { lbl.textContent = ''; }, 1500); }
+  }, 500);
 }
 
-function deleteNote(id) {
+function panelDeleteNote(id) {
   if (!confirm('Clear this note?')) return;
   const notes = loadNotes();
   delete notes[String(id)];
   saveNotes(notes);
-  delete notesTimestamps[String(id)];
-  noteCardOpen[String(id)] = false;
+  updateNotesDot();
   renderNotesPanel();
 }
 
-function escapeHtml(s) {
-  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// Add note button to each row on hover (injected into row-left)
-// We piggyback on the existing row hover — add a small 📝 button via tooltip mechanism
-// Instead, we add a note indicator/button into buildRow
-const _origBuildRow = buildRow;
-
-// Add note icon into the row name area — patch buildRow to show 📝 if note exists
-// We'll override the row html after render to inject note indicators
-function injectNoteIndicators() {
-  const notes = loadNotes();
-  RAW.forEach(c => {
-    const note = notes[String(c.id)];
-    if (!note || !note.trim()) return;
-    // Find all row-name divs for this campaign
-    document.querySelectorAll(`.row`).forEach(row => {
-      const nameEl = row.querySelector('.row-name');
-      if (nameEl && nameEl.title === c.name && !nameEl.querySelector('.note-indicator')) {
-        const indicator = document.createElement('span');
-        indicator.className = 'note-indicator';
-        indicator.title = 'Has note — click to open';
-        indicator.style.cssText = 'margin-left:4px;font-size:10px;cursor:pointer;opacity:.7;vertical-align:middle';
-        indicator.textContent = '📝';
-        indicator.onclick = (e) => { e.stopPropagation(); noteCardOpen[String(c.id)] = true; addNoteForCampaign(c.id); };
-        nameEl.appendChild(indicator);
-      }
-    });
-    // Also add a quick-note button on every row via mouseenter
-  });
-
-  // Add quick-add note button on row hover
-  document.querySelectorAll('.row').forEach(row => {
-    if (row.dataset.noteHooked) return;
-    row.dataset.noteHooked = '1';
-    row.addEventListener('mouseenter', () => {
-      const nameEl = row.querySelector('.row-name');
-      if (!nameEl) return;
-      const name = nameEl.title;
-      const c = RAW.find(r => r.name === name);
-      if (!c) return;
-      if (row.querySelector('.note-hover-btn')) return;
-      const btn = document.createElement('span');
-      btn.className = 'note-hover-btn';
-      btn.title = 'Add / view note';
-      btn.style.cssText = 'margin-left:4px;font-size:10px;cursor:pointer;opacity:.45;vertical-align:middle;transition:opacity .12s';
-      btn.textContent = '📝';
-      btn.onmouseenter = () => { btn.style.opacity = '1'; };
-      btn.onmouseleave = () => { btn.style.opacity = '.45'; };
-      btn.onclick = (e) => {
-        e.stopPropagation();
-        noteCardOpen[String(c.id)] = true;
-        addNoteForCampaign(c.id);
-      };
-      // Only add if no indicator already
-      if (!nameEl.querySelector('.note-indicator')) nameEl.appendChild(btn);
-    });
-    row.addEventListener('mouseleave', () => {
-      const btn = row.querySelector('.note-hover-btn');
-      if (btn) btn.remove();
-    });
-  });
-}
-
-// Init dot on load
+// Init
 updateNotesDot();
 </script>
 </body>
